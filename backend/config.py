@@ -14,7 +14,7 @@ class Config:
     
     # Configurações de segurança
     WTF_CSRF_TIME_LIMIT = None
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') != 'development'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
