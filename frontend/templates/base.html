@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Clínica Estética{% endblock %}</title>
     
     <!-- Google Fonts -->
@@ -114,5 +115,13 @@
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_js %}{% endblock %}
+    
+    <!-- Debug Console para desenvolvimento -->
+    {% if config.DEBUG %}
+    <script>
+        console.log('🏥 Sistema Clínica Estética - Modo Debug');
+        console.log('CSRF Token:', document.querySelector('meta[name="csrf-token"]')?.content);
+    </script>
+    {% endif %}
 </body>
 </html>
