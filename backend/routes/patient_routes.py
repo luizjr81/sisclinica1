@@ -63,33 +63,34 @@ def api_list_patients():
 @login_required
 def api_create_patient():
     data = request.json
-    
+    form = PatientForm(data=data, csrf_enabled=False)
+
     # Validar CPF único
     if Patient.query.filter_by(cpf=data.get('cpf')).first():
-        return jsonify({'error': 'CPF já cadastrado'}), 400
-    
-    try:
-        patient = Patient(
-            full_name=data['full_name'],
-            cpf=data['cpf'],
-            birth_date=datetime.strptime(data['birth_date'], '%Y-%m-%d').date(),
-            phone=data['phone'],
-            musical_preference=data.get('musical_preference', ''),
-            observations=data.get('observations', ''),
-            created_by=current_user.id
-        )
-        
-        db.session.add(patient)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Paciente cadastrado com sucesso',
-            'patient': patient.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'errors': {'cpf': ['CPF já cadastrado']}}), 400
+
+    if form.validate():
+        try:
+            patient = Patient(
+                full_name=form.full_name.data,
+                cpf=form.cpf.data,
+                birth_date=form.birth_date.data,
+                phone=form.phone.data,
+                musical_preference=form.musical_preference.data,
+                observations=form.observations.data,
+                created_by=current_user.id
+            )
+            db.session.add(patient)
+            db.session.commit()
+            return jsonify({
+                'message': 'Paciente cadastrado com sucesso',
+                'patient': patient.to_dict()
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'errors': {'_system': [str(e)]}}), 500
+    else:
+        return jsonify({'errors': form.errors}), 400
 
 @patient_bp.route('/api/<int:patient_id>', methods=['GET'])
 @login_required
@@ -102,7 +103,8 @@ def api_get_patient(patient_id):
 def api_update_patient(patient_id):
     patient = Patient.query.get_or_404(patient_id)
     data = request.json
-    
+    form = PatientForm(data=data, csrf_enabled=False)
+
     # Validar CPF único (exceto para o próprio paciente)
     cpf_exists = Patient.query.filter(
         Patient.cpf == data.get('cpf'),
@@ -110,27 +112,29 @@ def api_update_patient(patient_id):
     ).first()
     
     if cpf_exists:
-        return jsonify({'error': 'CPF já cadastrado para outro paciente'}), 400
-    
-    try:
-        patient.full_name = data['full_name']
-        patient.cpf = data['cpf']
-        patient.birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
-        patient.phone = data['phone']
-        patient.musical_preference = data.get('musical_preference', '')
-        patient.observations = data.get('observations', '')
-        patient.updated_at = datetime.utcnow()
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Paciente atualizado com sucesso',
-            'patient': patient.to_dict()
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'errors': {'cpf': ['CPF já cadastrado para outro paciente']}}), 400
+
+    if form.validate():
+        try:
+            patient.full_name = form.full_name.data
+            patient.cpf = form.cpf.data
+            patient.birth_date = form.birth_date.data
+            patient.phone = form.phone.data
+            patient.musical_preference = form.musical_preference.data
+            patient.observations = form.observations.data
+            patient.updated_at = datetime.utcnow()
+
+            db.session.commit()
+
+            return jsonify({
+                'message': 'Paciente atualizado com sucesso',
+                'patient': patient.to_dict()
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'errors': {'_system': [str(e)]}}), 500
+    else:
+        return jsonify({'errors': form.errors}), 400
 
 @patient_bp.route('/api/<int:patient_id>', methods=['DELETE'])
 @login_required
