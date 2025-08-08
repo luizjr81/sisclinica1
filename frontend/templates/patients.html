@@ -133,6 +133,7 @@ let searchTimeout;
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🏥 Inicializando página de pacientes');
     loadPatients();
     
     // Configurar busca
@@ -147,25 +148,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configurar formulário
     document.getElementById('patientForm').addEventListener('submit', handlePatientSubmit);
     
-    // Máscaras
+    // Configurar máscaras
     setupMasks();
+    
+    // Configurar validações em tempo real
+    setupValidations();
 });
 
 // Carregar pacientes
-function loadPatients(page = 1) {
+async function loadPatients(page = 1) {
+    console.log(`📋 Carregando pacientes - Página ${page}`);
     const search = document.getElementById('searchInput').value;
-    const url = `/patients/api/list?page=${page}&search=${search}`;
+    const url = `/patients/api/list?page=${page}&search=${encodeURIComponent(search)}`;
     
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            renderPatients(data.patients);
-            renderPagination(data);
-        })
-        .catch(error => {
-            console.error('Erro ao carregar pacientes:', error);
-            showAlert('Erro ao carregar pacientes', 'error');
-        });
+    try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Pacientes carregados:', data);
+        
+        renderPatients(data.patients);
+        renderPagination(data);
+        currentPage = page;
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar pacientes:', error);
+        showToast('Erro ao carregar pacientes: ' + error.message, 'error');
+        
+        // Mostrar mensagem de erro na tabela
+        document.getElementById('patientsTableBody').innerHTML = 
+            `<tr><td colspan="7" class="text-center" style="color: #f44336;">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Erro ao carregar pacientes: ${error.message}
+            </td></tr>`;
+    }
 }
 
 // Renderizar tabela
@@ -173,23 +193,33 @@ function renderPatients(patients) {
     const tbody = document.getElementById('patientsTableBody');
     
     if (patients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum paciente encontrado</td></tr>';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center" style="color: #666;">
+                    <i class="fas fa-user-friends" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>
+                    Nenhum paciente encontrado
+                </td>
+            </tr>`;
         return;
     }
     
     tbody.innerHTML = patients.map(patient => {
-        const birthDate = new Date(patient.birth_date);
+        const birthDate = new Date(patient.birth_date + 'T00:00:00');
         const age = calculateAge(birthDate);
+        const createdDate = new Date(patient.created_at);
         
         return `
             <tr>
-                <td>${patient.full_name}</td>
-                <td>${patient.cpf}</td>
-                <td>${birthDate.toLocaleDateString('pt-BR')} (${age} anos)</td>
+                <td><strong>${patient.full_name}</strong></td>
+                <td><code>${patient.cpf}</code></td>
+                <td>${birthDate.toLocaleDateString('pt-BR')} <small>(${age} anos)</small></td>
                 <td>${patient.phone}</td>
-                <td>${patient.musical_preference || '-'}</td>
-                <td>${new Date(patient.created_at).toLocaleDateString('pt-BR')}</td>
+                <td>${patient.musical_preference || '<em>-</em>'}</td>
+                <td>${createdDate.toLocaleDateString('pt-BR')}</td>
                 <td>
+                    <button class="btn-icon" onclick="viewPatient(${patient.id})" title="Ver detalhes">
+                        <i class="fas fa-eye"></i>
+                    </button>
                     <button class="btn-icon" onclick="editPatient(${patient.id})" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -205,144 +235,315 @@ function renderPatients(patients) {
 // Renderizar paginação
 function renderPagination(data) {
     const pagination = document.getElementById('pagination');
+    
+    if (data.pages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
     let html = '';
     
-    if (data.pages > 1) {
-        html += `<button onclick="loadPatients(${data.current_page - 1})" 
-                        ${data.current_page === 1 ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-left"></i>
-                </button>`;
-        
-        for (let i = 1; i <= data.pages; i++) {
-            html += `<button onclick="loadPatients(${i})" 
-                            class="${i === data.current_page ? 'active' : ''}">${i}</button>`;
-        }
-        
-        html += `<button onclick="loadPatients(${data.current_page + 1})" 
-                        ${data.current_page === data.pages ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-right"></i>
-                </button>`;
+    // Botão anterior
+    html += `<button onclick="loadPatients(${data.current_page - 1})" 
+                    ${data.current_page === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+    
+    // Páginas
+    const startPage = Math.max(1, data.current_page - 2);
+    const endPage = Math.min(data.pages, data.current_page + 2);
+    
+    if (startPage > 1) {
+        html += `<button onclick="loadPatients(1)">1</button>`;
+        if (startPage > 2) html += `<span>...</span>`;
     }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button onclick="loadPatients(${i})" 
+                        class="${i === data.current_page ? 'active' : ''}">${i}</button>`;
+    }
+    
+    if (endPage < data.pages) {
+        if (endPage < data.pages - 1) html += `<span>...</span>`;
+        html += `<button onclick="loadPatients(${data.pages})">${data.pages}</button>`;
+    }
+    
+    // Botão próximo
+    html += `<button onclick="loadPatients(${data.current_page + 1})" 
+                    ${data.current_page === data.pages ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
     
     pagination.innerHTML = html;
 }
 
 // Modal functions
 function openPatientModal() {
+    console.log('➕ Abrindo modal para novo paciente');
     document.getElementById('modalTitle').textContent = 'Novo Paciente';
     document.getElementById('patientForm').reset();
     document.getElementById('patientId').value = '';
     document.getElementById('patientModal').classList.add('active');
+    
+    // Focar no primeiro campo
+    setTimeout(() => {
+        document.getElementById('full_name').focus();
+    }, 300);
 }
 
 function closePatientModal() {
     document.getElementById('patientModal').classList.remove('active');
 }
 
-// Editar paciente
-function editPatient(id) {
-    fetch(`/patients/api/${id}`)
-        .then(response => response.json())
-        .then(patient => {
-            document.getElementById('modalTitle').textContent = 'Editar Paciente';
-            document.getElementById('patientId').value = patient.id;
-            document.getElementById('full_name').value = patient.full_name;
-            document.getElementById('cpf').value = patient.cpf;
-            document.getElementById('birth_date').value = patient.birth_date;
-            document.getElementById('phone').value = patient.phone;
-            document.getElementById('musical_preference').value = patient.musical_preference || '';
-            document.getElementById('observations').value = patient.observations || '';
-            
-            document.getElementById('patientModal').classList.add('active');
-        })
-        .catch(error => {
-            console.error('Erro ao carregar paciente:', error);
-            showAlert('Erro ao carregar dados do paciente', 'error');
-        });
+// Ver detalhes do paciente
+function viewPatient(id) {
+    // Por enquanto, abrir para edição
+    editPatient(id);
 }
 
-// Salvar paciente
-function handlePatientSubmit(e) {
+// Editar paciente
+async function editPatient(id) {
+    console.log(`✏️ Editando paciente ID: ${id}`);
+    
+    try {
+        const response = await fetch(`/patients/api/${id}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const patient = await response.json();
+        console.log('✅ Dados do paciente carregados:', patient);
+        
+        document.getElementById('modalTitle').textContent = 'Editar Paciente';
+        document.getElementById('patientId').value = patient.id;
+        document.getElementById('full_name').value = patient.full_name;
+        document.getElementById('cpf').value = patient.cpf;
+        document.getElementById('birth_date').value = patient.birth_date;
+        document.getElementById('phone').value = patient.phone;
+        document.getElementById('musical_preference').value = patient.musical_preference || '';
+        document.getElementById('observations').value = patient.observations || '';
+        
+        document.getElementById('patientModal').classList.add('active');
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar dados do paciente:', error);
+        showToast('Erro ao carregar dados do paciente: ' + error.message, 'error');
+    }
+}
+
+// Salvar paciente (criar ou editar)
+async function handlePatientSubmit(e) {
     e.preventDefault();
     
-    const formData = new FormData(e.target);
-    const patientId = document.getElementById('patientId').value;
-    const data = Object.fromEntries(formData);
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
     
-    const url = patientId ? `/patients/api/${patientId}` : '/patients/api/create';
-    const method = patientId ? 'PUT' : 'POST';
+    // Mostrar loading
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    submitButton.disabled = true;
     
-    fetch(url, {
-        method: method,
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.error) {
-            showAlert(result.error, 'error');
-        } else {
-            showAlert(result.message, 'success');
-            closePatientModal();
-            loadPatients(currentPage);
+    try {
+        const formData = new FormData(e.target);
+        const patientId = document.getElementById('patientId').value;
+        const data = Object.fromEntries(formData);
+        
+        console.log('💾 Salvando paciente:', data);
+        
+        // Validar dados antes de enviar
+        const validation = validatePatientData(data);
+        if (!validation.valid) {
+            throw new Error(validation.message);
         }
-    })
-    .catch(error => {
-        console.error('Erro ao salvar paciente:', error);
-        showAlert('Erro ao salvar paciente', 'error');
-    });
+        
+        const url = patientId ? `/patients/api/${patientId}` : '/patients/api/create';
+        const method = patientId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        console.log('✅ Paciente salvo com sucesso:', result);
+        showToast(result.message, 'success');
+        closePatientModal();
+        loadPatients(currentPage);
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar paciente:', error);
+        showToast(error.message, 'error');
+    } finally {
+        // Restaurar botão
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    }
 }
 
 // Excluir paciente
-function deletePatient(id) {
-    if (!confirm('Tem certeza que deseja excluir este paciente?')) {
+async function deletePatient(id) {
+    const patient = await getPatientById(id);
+    const patientName = patient ? patient.full_name : 'este paciente';
+    
+    if (!confirm(`Tem certeza que deseja excluir ${patientName}?\n\nEsta ação não pode ser desfeita.`)) {
         return;
     }
     
-    fetch(`/patients/api/${id}`, { method: 'DELETE' })
-        .then(response => response.json())
-        .then(result => {
-            if (result.error) {
-                showAlert(result.error, 'error');
-            } else {
-                showAlert(result.message, 'success');
-                loadPatients(currentPage);
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao excluir paciente:', error);
-            showAlert('Erro ao excluir paciente', 'error');
-        });
+    console.log(`🗑️ Excluindo paciente ID: ${id}`);
+    
+    try {
+        const response = await fetch(`/patients/api/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        console.log('✅ Paciente excluído com sucesso');
+        showToast(result.message, 'success');
+        loadPatients(currentPage);
+        
+    } catch (error) {
+        console.error('❌ Erro ao excluir paciente:', error);
+        showToast('Erro ao excluir paciente: ' + error.message, 'error');
+    }
 }
 
-// Máscaras
+// Buscar paciente por ID (auxiliar)
+async function getPatientById(id) {
+    try {
+        const response = await fetch(`/patients/api/${id}`);
+        return response.ok ? await response.json() : null;
+    } catch {
+        return null;
+    }
+}
+
+// Configurar máscaras nos campos
 function setupMasks() {
-    // CPF
-    document.getElementById('cpf').addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 11) {
-            value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-        }
-        e.target.value = value;
+    // CPF com validação visual
+    const cpfInput = document.getElementById('cpf');
+    cpfInput.addEventListener('input', function(e) {
+        maskCPF(e.target);
+        validateCPFVisual(e.target);
     });
     
     // Telefone
-    document.getElementById('phone').addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 11) {
-            if (value.length === 11) {
-                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-            } else {
-                value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-            }
-        }
-        e.target.value = value;
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', function(e) {
+        maskPhone(e.target);
+        validatePhoneVisual(e.target);
     });
 }
 
-// Utilitários
+// Configurar validações em tempo real
+function setupValidations() {
+    // Nome
+    document.getElementById('full_name').addEventListener('blur', function(e) {
+        const value = e.target.value.trim();
+        if (value.length < 3) {
+            showFieldError(e.target, 'Nome deve ter pelo menos 3 caracteres');
+        } else {
+            clearFieldError(e.target);
+        }
+    });
+}
+
+// Validação visual do CPF
+function validateCPFVisual(input) {
+    const isValid = validateCPF(input.value);
+    if (input.value.length >= 11) {
+        if (isValid) {
+            input.style.borderColor = '#4caf50';
+            clearFieldError(input);
+        } else {
+            input.style.borderColor = '#f44336';
+            showFieldError(input, 'CPF inválido');
+        }
+    } else {
+        input.style.borderColor = '';
+        clearFieldError(input);
+    }
+}
+
+// Validação visual do telefone
+function validatePhoneVisual(input) {
+    const isValid = validatePhone(input.value);
+    if (input.value.length >= 10) {
+        if (isValid) {
+            input.style.borderColor = '#4caf50';
+            clearFieldError(input);
+        } else {
+            input.style.borderColor = '#f44336';
+            showFieldError(input, 'Telefone inválido');
+        }
+    } else {
+        input.style.borderColor = '';
+        clearFieldError(input);
+    }
+}
+
+// Mostrar erro no campo
+function showFieldError(input, message) {
+    clearFieldError(input);
+    const error = document.createElement('div');
+    error.className = 'field-error';
+    error.style.color = '#f44336';
+    error.style.fontSize = '12px';
+    error.style.marginTop = '4px';
+    error.textContent = message;
+    input.parentNode.appendChild(error);
+}
+
+// Limpar erro do campo
+function clearFieldError(input) {
+    const error = input.parentNode.querySelector('.field-error');
+    if (error) error.remove();
+}
+
+// Validar dados do paciente antes do envio
+function validatePatientData(data) {
+    if (!data.full_name || data.full_name.trim().length < 3) {
+        return { valid: false, message: 'Nome deve ter pelo menos 3 caracteres' };
+    }
+    
+    if (!validateCPF(data.cpf)) {
+        return { valid: false, message: 'CPF inválido' };
+    }
+    
+    if (!validatePhone(data.phone)) {
+        return { valid: false, message: 'Telefone inválido' };
+    }
+    
+    if (!data.birth_date) {
+        return { valid: false, message: 'Data de nascimento é obrigatória' };
+    }
+    
+    // Verificar se a data não é futura
+    const birthDate = new Date(data.birth_date);
+    const today = new Date();
+    if (birthDate > today) {
+        return { valid: false, message: 'Data de nascimento não pode ser futura' };
+    }
+    
+    // Verificar idade mínima (ex: não pode ter mais de 120 anos)
+    const age = calculateAge(birthDate);
+    if (age > 120) {
+        return { valid: false, message: 'Data de nascimento inválida' };
+    }
+    
+    return { valid: true };
+}
+
+// Calcular idade
 function calculateAge(birthDate) {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -355,19 +556,62 @@ function calculateAge(birthDate) {
     return age;
 }
 
-function showAlert(message, type = 'info') {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="close" onclick="this.parentElement.remove()">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
+// Fechar modal ao clicar fora
+document.getElementById('patientModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePatientModal();
+    }
+});
+
+// Atalhos de teclado
+document.addEventListener('keydown', function(e) {
+    // ESC para fechar modal
+    if (e.key === 'Escape') {
+        closePatientModal();
+    }
     
-    document.querySelector('.content-wrapper').insertBefore(alertDiv, document.querySelector('.content-wrapper').firstChild);
-    
-    setTimeout(() => alertDiv.remove(), 5000);
-}
+    // Ctrl+N para novo paciente
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        openPatientModal();
+    }
+});
 </script>
+
+<style>
+/* Estilos específicos para a página de pacientes */
+.text-center {
+    text-align: center;
+}
+
+.pagination span {
+    padding: 8px 12px;
+    color: #666;
+}
+
+.field-error {
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Loading states */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Success/Error visual feedback */
+input.success {
+    border-color: #4caf50 !important;
+}
+
+input.error {
+    border-color: #f44336 !important;
+}
+</style>
 {% endblock %}
