@@ -2,24 +2,53 @@ from flask import Blueprint, render_template, request, jsonify, flash, redirect,
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, DateField, TextAreaField, SubmitField
-from wtforms.validators import DataRequired, Length, Regexp
+from wtforms.validators import DataRequired, Length, ValidationError
 from models import db, Patient
 from datetime import datetime
 import re
 
 patient_bp = Blueprint('patients', __name__)
 
+def validate_cpf(form, field):
+    cpf = re.sub(r'\D', '', field.data)
+    if len(cpf) != 11:
+        raise ValidationError('CPF deve conter 11 dígitos.')
+
+    # Lógica de validação de CPF (dígitos verificadores)
+    if cpf == cpf[0] * 11:
+        raise ValidationError('CPF inválido.')
+
+    sum_ = sum(int(cpf[i]) * (10 - i) for i in range(9))
+    d1 = (sum_ * 10) % 11
+    if d1 == 10: d1 = 0
+    if d1 != int(cpf[9]):
+        raise ValidationError('CPF inválido.')
+
+    sum_ = sum(int(cpf[i]) * (11 - i) for i in range(10))
+    d2 = (sum_ * 10) % 11
+    if d2 == 10: d2 = 0
+    if d2 != int(cpf[10]):
+        raise ValidationError('CPF inválido.')
+
+    # Armazenar formatado
+    field.data = f'{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}'
+
+def validate_phone(form, field):
+    phone = re.sub(r'\D', '', field.data)
+    if not 10 <= len(phone) <= 11:
+        raise ValidationError('Telefone deve conter 10 ou 11 dígitos (com DDD).')
+
+    # Armazenar formatado
+    if len(phone) == 11:
+        field.data = f'({phone[:2]}) {phone[2:7]}-{phone[7:]}'
+    else:
+        field.data = f'({phone[:2]}) {phone[2:6]}-{phone[6:]}'
+
 class PatientForm(FlaskForm):
     full_name = StringField('Nome Completo', validators=[DataRequired(), Length(min=3, max=150)])
-    cpf = StringField('CPF', validators=[
-        DataRequired(),
-        Regexp(r'^\d{3}\.\d{3}\.\d{3}-\d{2}$', message='CPF deve estar no formato 000.000.000-00')
-    ])
-    birth_date = DateField('Data de Nascimento', validators=[DataRequired()])
-    phone = StringField('Telefone', validators=[
-        DataRequired(),
-        Regexp(r'^\(\d{2}\) \d{4,5}-\d{4}$', message='Telefone deve estar no formato (00) 00000-0000')
-    ])
+    cpf = StringField('CPF', validators=[DataRequired(), validate_cpf])
+    birth_date = DateField('Data de Nascimento', validators=[DataRequired()], format='%Y-%m-%d')
+    phone = StringField('Telefone', validators=[DataRequired(), validate_phone])
     musical_preference = StringField('Gosto Musical', validators=[Length(max=100)])
     observations = TextAreaField('Observações')
     submit = SubmitField('Salvar')
