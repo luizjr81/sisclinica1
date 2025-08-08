@@ -14,6 +14,9 @@ def create_app():
     
     app.config.from_object(Config)
     
+    if not app.config['SECRET_KEY'] or app.config['SECRET_KEY'] == 'sua-chave-secreta-aqui-mude-em-producao':
+        raise ValueError("A SECRET_KEY não foi configurada ou está usando o valor padrão. Por favor, crie um arquivo .env, defina uma chave segura e reinicie a aplicação.")
+
     # Inicializar extensões
     db.init_app(app)
     csrf = CSRFProtect(app)
