@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Requisição Inválida{% endblock %}
+{% block page_title %}Erro 400{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 60px 20px;">
+    <div style="max-width: 500px; margin: 0 auto;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 80px; color: #ff9800; margin-bottom: 20px;"></i>
+        <h1 style="font-size: 72px; margin: 0; color: #424242;">400</h1>
+        <h2 style="font-size: 24px; margin: 20px 0; color: #616161;">Requisição Inválida</h2>
+        <p style="color: #757575; margin-bottom: 30px;">A requisição não pôde ser processada.</p>
+        <div>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="margin-right: 10px;">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <button onclick="history.back()" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

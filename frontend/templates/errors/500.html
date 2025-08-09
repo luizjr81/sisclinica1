@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Erro Interno{% endblock %}
+{% block page_title %}Erro 500{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 60px 20px;">
+    <div style="max-width: 500px; margin: 0 auto;">
+        <i class="fas fa-server" style="font-size: 80px; color: #f44336; margin-bottom: 20px;"></i>
+        <h1 style="font-size: 72px; margin: 0; color: #424242;">500</h1>
+        <h2 style="font-size: 24px; margin: 20px 0; color: #616161;">Erro Interno</h2>
+        <p style="color: #757575; margin-bottom: 30px;">Ocorreu um erro interno. Nossa equipe foi notificada.</p>
+        <div>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="margin-right: 10px;">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <button onclick="location.reload()" class="btn btn-secondary">
+                <i class="fas fa-redo"></i> Tentar Novamente
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
