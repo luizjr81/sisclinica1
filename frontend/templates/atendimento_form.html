@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Atendimento - Clínica Estética{% endblock %}
+{% block page_title %}Registrar Novo Atendimento{% endblock %}
+
+{% block content %}
+<div class="atendimento-form-page">
+    <div class="card">
+        <form id="atendimentoForm">
+            <div class="form-section">
+                <h3><i class="fas fa-user"></i> Paciente</h3>
+                <p class="patient-info">{{ patient.full_name }} (CPF: {{ patient.cpf }})</p>
+                <input type="hidden" id="patient_id" value="{{ patient.id }}">
+            </div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-user-md"></i> Profissional e Serviços</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="professional_id">Profissional Responsável *</label>
+                        <select id="professional_id" name="professional_id" required>
+                            {% for prof in professionals %}
+                                <option value="{{ prof.id }}" {% if current_professional and current_professional.id == prof.id %}selected{% endif %}>
+                                    {{ prof.full_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="data_atendimento">Data e Hora do Atendimento *</label>
+                        <input type="datetime-local" id="data_atendimento" name="data_atendimento" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="service_ids">Serviços Prestados *</label>
+                    <select id="service_ids" name="service_ids" multiple required>
+                        <!-- Options will be loaded based on professional selection -->
+                    </select>
+                    <small class="form-text">Segure Ctrl (ou Cmd) para selecionar múltiplos serviços.</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-file-medical"></i> Anotações e Valor</h3>
+                <div class="form-group">
+                    <label for="anotacoes">Anotações do Prontuário</label>
+                    <textarea id="anotacoes" name="anotacoes" rows="6" placeholder="Descreva o procedimento, produtos utilizados, intercorrências, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="valor_cobrado">Valor Cobrado (R$)</label>
+                    <input type="number" step="0.01" id="valor_cobrado" name="valor_cobrado" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-footer">
+                <a href="{{ url_for('patients.list_patients') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Salvar Atendimento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let professionalServices = {}; // Cache para os serviços de cada profissional
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Definir data e hora atuais como padrão
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('data_atendimento').value = now.toISOString().slice(0, 16);
+
+    const professionalSelect = document.getElementById('professional_id');
+
+    // Carregar serviços para o profissional já selecionado
+    if (professionalSelect.value) {
+        loadServicesForProfessional(professionalSelect.value);
+    }
+
+    // Adicionar listener para trocar de profissional
+    professionalSelect.addEventListener('change', function() {
+        loadServicesForProfessional(this.value);
+    });
+
+    // Submissão do formulário
+    document.getElementById('atendimentoForm').addEventListener('submit', handleFormSubmit);
+});
+
+async function loadServicesForProfessional(professionalId) {
+    const serviceSelect = document.getElementById('service_ids');
+    serviceSelect.innerHTML = '<option>Carregando...</option>';
+    serviceSelect.disabled = true;
+
+    // Usar cache se disponível
+    if (professionalServices[professionalId]) {
+        populateServiceSelect(professionalServices[professionalId]);
+        return;
+    }
+
+    try {
+        const response = await fetch(`/professionals/api/${professionalId}`);
+        const professional = await response.json();
+
+        if (!response.ok) throw new Error(professional.error || 'Erro ao buscar profissional');
+
+        professionalServices[professionalId] = professional.services;
+        populateServiceSelect(professional.services);
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar serviços do profissional:', error);
+        serviceSelect.innerHTML = '<option>Erro ao carregar</option>';
+        showToast(error.message, 'error');
+    }
+}
+
+function populateServiceSelect(services) {
+    const serviceSelect = document.getElementById('service_ids');
+    serviceSelect.innerHTML = ''; // Limpar
+
+    if (services && services.length > 0) {
+        services.forEach(service => {
+            if (service.is_active) {
+                const option = document.createElement('option');
+                option.value = service.id;
+                option.textContent = `${service.name} (R$ ${service.price.toFixed(2)})`;
+                serviceSelect.appendChild(option);
+            }
+        });
+        serviceSelect.disabled = false;
+    } else {
+        serviceSelect.innerHTML = '<option>Nenhum serviço associado a este profissional</option>';
+        serviceSelect.disabled = true;
+    }
+}
+
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+    const data = {
+        patient_id: parseInt(document.getElementById('patient_id').value),
+        professional_id: parseInt(document.getElementById('professional_id').value),
+        data_atendimento: new Date(document.getElementById('data_atendimento').value).toISOString(),
+        service_ids: Array.from(document.getElementById('service_ids').selectedOptions).map(opt => parseInt(opt.value)),
+        anotacoes: document.getElementById('anotacoes').value,
+        valor_cobrado: parseFloat(document.getElementById('valor_cobrado').value) || 0
+    };
+
+    try {
+        const response = await fetch('/atendimentos/api/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Erro desconhecido ao salvar.');
+        }
+
+        showToast(result.message, 'success');
+        // Redirecionar para a página do paciente ou histórico em 2 segundos
+        setTimeout(() => {
+            window.location.href = `/patients`; // Simplificado por enquanto
+        }, 2000);
+
+    } catch (error) {
+        showToast(error.message, 'error');
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-save"></i> Salvar Atendimento';
+    }
+}
+</script>
+
+<style>
+.atendimento-form-page .card {
+    max-width: 800px;
+    margin: 0 auto;
+}
+.patient-info {
+    font-size: 1.2em;
+    font-weight: 500;
+    color: var(--gray-700);
+    padding: 10px;
+    background: var(--gray-100);
+    border-radius: 8px;
+}
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 20px;
+    border-top: 1px solid var(--gray-200);
+}
+#service_ids {
+    min-height: 150px;
+}
+</style>
+{% endblock %}
