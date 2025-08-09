@@ -1102,3 +1102,484 @@ body {
         max-width: 100%;
     }
 }
+
+/* Estilos adicionais para o sistema de profissionais */
+
+/* Seções do menu lateral */
+.nav-section {
+    margin-top: 20px;
+}
+
+.nav-section:first-child {
+    margin-top: 0;
+}
+
+.nav-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 25px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.nav-section-title i {
+    font-size: 14px;
+}
+
+.sidebar.collapsed .nav-section-title span {
+    display: none;
+}
+
+.sidebar.collapsed .nav-section-title {
+    justify-content: center;
+    padding: 10px;
+}
+
+/* Indicador de role do usuário */
+.user-role-indicator {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-left: 20px;
+    padding: 4px 12px;
+    background: var(--gray-100);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.user-role-indicator i {
+    color: var(--primary);
+}
+
+/* Menu do usuário */
+.user-menu {
+    position: relative;
+}
+
+.user-menu-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 10px;
+    transition: var(--transition);
+}
+
+.user-menu-toggle:hover {
+    background: var(--gray-100);
+}
+
+.user-menu-toggle img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.user-menu-toggle i {
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.user-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    min-width: 200px;
+    padding: 10px 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+    z-index: 1000;
+}
+
+.user-menu-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.user-menu-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    color: var(--gray-700);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.user-menu-dropdown a:hover {
+    background: var(--gray-50);
+    color: var(--primary);
+}
+
+.user-menu-dropdown a.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--gray-200);
+    margin: 8px 0;
+}
+
+/* Role específico no sidebar footer */
+.user-role {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--gray-600);
+}
+
+.user-role i {
+    font-size: 10px;
+}
+
+/* Badges e status específicos para profissionais */
+.professional-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.professional-status.online {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.professional-status.offline {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.professional-status.busy {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+/* Estilos para formulários de profissionais */
+.modal-large {
+    padding: 20px;
+}
+
+.modal-large .modal-content {
+    max-width: 900px;
+    width: 95%;
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 2px solid var(--gray-100);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.form-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.form-section h3 i {
+    color: var(--primary);
+    font-size: 16px;
+}
+
+/* Campos específicos para profissionais */
+.crm-input {
+    text-transform: uppercase;
+}
+
+.specialty-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Cards de profissionais no dashboard */
+.professional-card {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.professional-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.professional-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid var(--primary-light);
+}
+
+.professional-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 4px;
+}
+
+.professional-info p {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+}
+
+/* Indicadores de atividade */
+.activity-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    border: 2px solid var(--white);
+}
+
+.activity-indicator.online {
+    background: var(--success);
+}
+
+.activity-indicator.away {
+    background: var(--warning);
+}
+
+.activity-indicator.offline {
+    background: var(--gray-400);
+}
+
+/* Permissões visuais */
+.permission-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.permission-badge.admin {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--white);
+}
+
+.permission-badge.professional {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: var(--white);
+}
+
+.permission-badge.receptionist {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: var(--white);
+}
+
+/* Responsividade para profissionais */
+@media (max-width: 768px) {
+    .user-role-indicator {
+        display: none;
+    }
+    
+    .professional-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .form-section h3 {
+        font-size: 16px;
+    }
+    
+    .modal-large .modal-content {
+        max-width: 95%;
+        margin: 10px;
+    }
+    
+    .user-menu-dropdown {
+        right: -10px;
+        left: auto;
+        min-width: 180px;
+    }
+}
+
+@media (max-width: 480px) {
+    .topbar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .topbar-right {
+        align-self: flex-end;
+    }
+    
+    .page-title {
+        font-size: 20px;
+    }
+}
+
+/* Animações específicas */
+@keyframes professionalCardAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.professional-card {
+    animation: professionalCardAppear 0.3s ease-out;
+}
+
+/* Estados de loading para profissionais */
+.professional-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px;
+    color: var(--gray-500);
+}
+
+.professional-loading i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--primary);
+}
+
+.professional-loading p {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.professional-loading small {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+/* Melhorias nos botões de ação */
+.action-buttons .btn-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.action-buttons .btn-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Badges melhorados */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-primary {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.badge-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.badge-warning {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.badge-danger {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.badge-info {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+/* Tooltip melhorado */
+[title] {
+    position: relative;
+}
+
+[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gray-900);
+    color: var(--white);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 4px;
+}
+
+[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: var(--gray-900);
+    z-index: 1000;
+}

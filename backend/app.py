@@ -4,7 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from config import Config
-from models import db, User
+from models import db, User, Specialty
 import os
 
 def create_app():
@@ -23,11 +23,6 @@ def create_app():
     # Configurar CSRF com exceções para API
     csrf = CSRFProtect(app)
     
-    # Exceções CSRF para endpoints específicos (se necessário)
-    # csrf.exempt('patients.api_create_patient')
-    # csrf.exempt('patients.api_update_patient')
-    # csrf.exempt('patients.api_delete_patient')
-    
     bcrypt = Bcrypt(app)
     jwt = JWTManager(app)
     
@@ -44,9 +39,11 @@ def create_app():
     # Registrar blueprints
     from routes.auth_routes import auth_bp
     from routes.patient_routes import patient_bp
+    from routes.professional_routes import professionals_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(patient_bp, url_prefix='/patients')
+    app.register_blueprint(professionals_bp, url_prefix='/professionals')
     
     # Rotas principais
     @app.route('/')
@@ -60,11 +57,21 @@ def create_app():
     def dashboard():
         return render_template('dashboard.html')
     
-    # Context processor para disponibilizar csrf_token nos templates
+    # Context processor para disponibilizar csrf_token e user nos templates
     @app.context_processor
     def inject_csrf_token():
         from flask_wtf.csrf import generate_csrf
         return dict(csrf_token=generate_csrf)
+    
+    @app.context_processor
+    def inject_user_permissions():
+        """Disponibiliza funções de permissão nos templates"""
+        def has_permission(permission):
+            if current_user.is_authenticated:
+                return current_user.has_permission(permission)
+            return False
+        
+        return dict(has_permission=has_permission)
     
     # Tratamento de erros
     @app.errorhandler(400)
@@ -82,7 +89,7 @@ def create_app():
     @app.errorhandler(403)
     def forbidden(error):
         if 'application/json' in str(error):
-            return {'error': 'Token CSRF inválido ou ausente'}, 403
+            return {'error': 'Acesso negado'}, 403
         return render_template('errors/403.html'), 403
     
     @app.errorhandler(404)
@@ -98,27 +105,59 @@ def create_app():
             return {'error': 'Erro interno do servidor'}, 500
         return render_template('errors/500.html'), 500
     
-    # Criar tabelas do banco e usuário admin
+    # Criar tabelas do banco e dados iniciais
     with app.app_context():
         try:
             db.create_all()
+            
+            # Criar especialidades padrão se não existirem
+            default_specialties = [
+                {
+                    'name': 'Dermatologia',
+                    'description': 'Especialidade médica que trata doenças relacionadas à pele, cabelos e unhas'
+                },
+                {
+                    'name': 'Estética Facial',
+                    'description': 'Tratamentos estéticos para rosto, incluindo limpezas, peelings e rejuvenescimento'
+                },
+                {
+                    'name': 'Estética Corporal',
+                    'description': 'Procedimentos estéticos para o corpo, como massagens, drenagem e modelagem'
+                },
+                {
+                    'name': 'Cosmetologia',
+                    'description': 'Ciência que estuda cosméticos e seus efeitos na pele'
+                },
+                {
+                    'name': 'Micropigmentação',
+                    'description': 'Técnica de pigmentação semipermanente para sobrancelhas, lábios e olhos'
+                }
+            ]
+            
+            for spec_data in default_specialties:
+                if not Specialty.query.filter_by(name=spec_data['name']).first():
+                    specialty = Specialty(**spec_data)
+                    db.session.add(specialty)
             
             # Criar usuário admin padrão se não existir
             if not User.query.filter_by(username='admin').first():
                 admin = User(
                     username='admin',
                     email='admin@clinica.com',
-                    full_name='Administrador'
+                    full_name='Administrador',
+                    role='admin'
                 )
                 admin.set_password('admin123')  # Mudar em produção!
                 db.session.add(admin)
-                db.session.commit()
+                
                 print("✅ Usuário admin criado com sucesso!")
                 print("   Username: admin")
                 print("   Password: admin123")
                 print("   ⚠️  ALTERE ESTA SENHA EM PRODUÇÃO!")
             
+            db.session.commit()
             print("✅ Banco de dados inicializado com sucesso!")
+            print("✅ Especialidades padrão criadas!")
             
         except Exception as e:
             print(f"❌ Erro ao inicializar banco de dados: {e}")
@@ -134,6 +173,10 @@ if __name__ == '__main__':
         print("🚀 Servidor iniciando...")
         print("📍 URL: http://localhost:5000")
         print("👤 Login: admin / admin123")
+        print("📋 Módulos disponíveis:")
+        print("   • Pacientes")
+        print("   • Profissionais")
+        print("   • Especialidades")
         print("=" * 50)
         
         app.run(debug=True, host='0.0.0.0', port=5000)

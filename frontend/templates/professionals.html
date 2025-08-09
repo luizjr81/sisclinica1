@@ -1,0 +1,1015 @@
+{% extends "base.html" %}
+
+{% block title %}Profissionais - Clínica Estética{% endblock %}
+{% block page_title %}Gerenciar Profissionais{% endblock %}
+
+{% block content %}
+<div class="professionals-page">
+    <!-- Barra de Ações -->
+    <div class="action-bar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Buscar por nome, CPF, registro, email ou especialidade...">
+        </div>
+        <div class="action-buttons">
+            <a href="{{ url_for('professionals.list_specialties') }}" class="btn btn-secondary">
+                <i class="fas fa-stethoscope"></i>
+                Especialidades
+            </a>
+            <button class="btn btn-primary" onclick="openProfessionalModal()">
+                <i class="fas fa-plus"></i>
+                Novo Profissional
+            </button>
+        </div>
+    </div>
+    
+    <!-- Tabela de Profissionais -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table" id="professionalsTable">
+                <thead>
+                    <tr>
+                        <th>Profissional</th>
+                        <th>CPF</th>
+                        <th>Registro Prof.</th>
+                        <th>Especialidade</th>
+                        <th>Contato</th>
+                        <th>Status</th>
+                        <th>Conta</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="professionalsTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            <i class="fas fa-spinner fa-spin"></i> Carregando profissionais...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginação -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<!-- Modal de Profissional -->
+<div class="modal" id="professionalModal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Profissional</h2>
+            <button class="modal-close" onclick="closeProfessionalModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="professionalForm" class="modal-form">
+            <input type="hidden" id="professionalId">
+            
+            <!-- Dados Pessoais -->
+            <div class="form-section">
+                <h3><i class="fas fa-user"></i> Dados Pessoais</h3>
+                
+                <div class="form-row">
+                    <div class="form-group flex-2">
+                        <label for="full_name">
+                            <i class="fas fa-user"></i>
+                            Nome Completo *
+                        </label>
+                        <input type="text" id="full_name" name="full_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="birth_date">
+                            <i class="fas fa-calendar"></i>
+                            Data de Nascimento
+                        </label>
+                        <input type="date" id="birth_date" name="birth_date">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cpf">
+                            <i class="fas fa-id-card"></i>
+                            CPF *
+                        </label>
+                        <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registro_prof">
+                            <i class="fas fa-certificate"></i>
+                            Registro Prof.
+                        </label>
+                        <input type="text" id="registro_prof" name="registro_prof" placeholder="Ex: CRM 12345, CREF 1234">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dados Profissionais -->
+            <div class="form-section">
+                <h3><i class="fas fa-stethoscope"></i> Dados Profissionais</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="specialty_id">
+                            <i class="fas fa-user-md"></i>
+                            Especialidade *
+                        </label>
+                        <select id="specialty_id" name="specialty_id" required>
+                            <option value="">Selecione uma especialidade</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="is_active" name="is_active" checked>
+                            <span class="checkmark"></span>
+                            Profissional ativo
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bio">
+                        <i class="fas fa-file-text"></i>
+                        Biografia/Descrição
+                    </label>
+                    <textarea id="bio" name="bio" rows="3" 
+                              placeholder="Formação, experiência, especialidades..."></textarea>
+                </div>
+            </div>
+            
+            <!-- Contato -->
+            <div class="form-section">
+                <h3><i class="fas fa-phone"></i> Contato</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone">
+                            <i class="fas fa-phone"></i>
+                            Telefone *
+                        </label>
+                        <input type="text" id="phone" name="phone" placeholder="(00) 00000-0000" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i>
+                            Email
+                        </label>
+                        <input type="email" id="email" name="email">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeProfessionalModal()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Conta de Usuário -->
+<div class="modal" id="userAccountModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="userModalTitle">Criar Conta de Usuário</h2>
+            <button class="modal-close" onclick="closeUserAccountModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="userAccountForm" class="modal-form">
+            <input type="hidden" id="userProfessionalId">
+            
+            <div class="form-group">
+                <label for="username">
+                    <i class="fas fa-user"></i>
+                    Nome de Usuário *
+                </label>
+                <input type="text" id="username" name="username" required 
+                       placeholder="Ex: dr.joao, dra.maria">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">
+                    <i class="fas fa-lock"></i>
+                    Senha *
+                </label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="Mínimo 8 caracteres">
+            </div>
+            
+            <div class="form-group">
+                <label for="password_confirm">
+                    <i class="fas fa-lock"></i>
+                    Confirmar Senha *
+                </label>
+                <input type="password" id="password_confirm" name="password_confirm" required>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                O profissional poderá acessar o sistema com perfil restrito, visualizando apenas pacientes e agendamentos.
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeUserAccountModal()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i>
+                    Criar Conta
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let searchTimeout;
+let specialties = [];
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🏥 Inicializando página de profissionais');
+    loadSpecialties();
+    loadProfessionals();
+    
+    // Configurar busca
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadProfessionals();
+        }, 500);
+    });
+    
+    // Configurar formulários
+    document.getElementById('professionalForm').addEventListener('submit', handleProfessionalSubmit);
+    document.getElementById('userAccountForm').addEventListener('submit', handleUserAccountSubmit);
+    
+    // Configurar máscaras
+    setupMasks();
+});
+
+// Carregar especialidades para o select
+async function loadSpecialties() {
+    try {
+        const response = await fetch('/professionals/api/specialties/options');
+        
+        if (!response.ok) {
+            throw new Error('Erro ao carregar especialidades');
+        }
+        
+        specialties = await response.json();
+        
+        const select = document.getElementById('specialty_id');
+        select.innerHTML = '<option value="">Selecione uma especialidade</option>';
+        
+        specialties.forEach(specialty => {
+            const option = document.createElement('option');
+            option.value = specialty.id;
+            option.textContent = specialty.name;
+            select.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar especialidades:', error);
+        showToast('Erro ao carregar especialidades', 'error');
+    }
+}
+
+// Carregar profissionais
+async function loadProfessionals(page = 1) {
+    console.log(`👥 Carregando profissionais - Página ${page}`);
+    const search = document.getElementById('searchInput').value;
+    const url = `/professionals/api/list?page=${page}&search=${encodeURIComponent(search)}`;
+    
+    try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Profissionais carregados:', data);
+        
+        renderProfessionals(data.professionals);
+        renderPagination(data);
+        currentPage = page;
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar profissionais:', error);
+        showToast('Erro ao carregar profissionais: ' + error.message, 'error');
+        
+        document.getElementById('professionalsTableBody').innerHTML = 
+            `<tr><td colspan="8" class="text-center" style="color: #f44336;">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Erro ao carregar profissionais: ${error.message}
+            </td></tr>`;
+    }
+}
+
+// Renderizar tabela
+function renderProfessionals(professionals) {
+    const tbody = document.getElementById('professionalsTableBody');
+    
+    if (professionals.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center" style="color: #666;">
+                    <i class="fas fa-user-md" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>
+                    Nenhum profissional encontrado
+                </td>
+            </tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = professionals.map(professional => {
+        const birthDate = professional.birth_date ? new Date(professional.birth_date + 'T00:00:00') : null;
+        const age = birthDate ? calculateAge(birthDate) : null;
+        const statusClass = professional.is_active ? 'success' : 'danger';
+        const statusText = professional.is_active ? 'Ativo' : 'Inativo';
+        const statusIcon = professional.is_active ? 'check-circle' : 'times-circle';
+        
+        const accountStatus = professional.has_user_account 
+            ? '<span class="account-badge active"><i class="fas fa-check"></i> Tem conta</span>'
+            : '<span class="account-badge inactive"><i class="fas fa-times"></i> Sem conta</span>';
+        
+        return `
+            <tr>
+                <td>
+                    <div class="professional-info">
+                        <strong>${professional.full_name}</strong>
+                        ${age ? `<small>${age} anos</small>` : ''}
+                    </div>
+                </td>
+                <td><code>${professional.cpf}</code></td>
+                <td><strong>${professional.registro_prof || '<em>-</em>'}</strong></td>
+                <td>
+                    <span class="specialty-badge">
+                        <i class="fas fa-stethoscope"></i>
+                        ${professional.specialty.name}
+                    </span>
+                </td>
+                <td>
+                    <div class="contact-info">
+                        <div><i class="fas fa-phone"></i> ${professional.phone}</div>
+                        <div><i class="fas fa-envelope"></i> ${professional.email || '<em>Não informado</em>'}</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="status-badge status-${statusClass}">
+                        <i class="fas fa-${statusIcon}"></i>
+                        ${statusText}
+                    </span>
+                </td>
+                <td>${accountStatus}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-icon" onclick="viewProfessional(${professional.id})" title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-icon" onclick="editProfessional(${professional.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${!professional.has_user_account ? 
+                            `<button class="btn-icon success" onclick="createUserAccount(${professional.id})" title="Criar conta">
+                                <i class="fas fa-user-plus"></i>
+                            </button>` : 
+                            `<button class="btn-icon warning" onclick="resetPassword(${professional.id})" title="Alterar senha">
+                                <i class="fas fa-key"></i>
+                            </button>`
+                        }
+                        <button class="btn-icon danger" onclick="deleteProfessional(${professional.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Renderizar paginação
+function renderPagination(data) {
+    const pagination = document.getElementById('pagination');
+    
+    if (data.pages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    
+    // Botão anterior
+    html += `<button onclick="loadProfessionals(${data.current_page - 1})" 
+                    ${data.current_page === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+    
+    // Páginas
+    const startPage = Math.max(1, data.current_page - 2);
+    const endPage = Math.min(data.pages, data.current_page + 2);
+    
+    if (startPage > 1) {
+        html += `<button onclick="loadProfessionals(1)">1</button>`;
+        if (startPage > 2) html += `<span>...</span>`;
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button onclick="loadProfessionals(${i})" 
+                        class="${i === data.current_page ? 'active' : ''}">${i}</button>`;
+    }
+    
+    if (endPage < data.pages) {
+        if (endPage < data.pages - 1) html += `<span>...</span>`;
+        html += `<button onclick="loadProfessionals(${data.pages})">${data.pages}</button>`;
+    }
+    
+    // Botão próximo
+    html += `<button onclick="loadProfessionals(${data.current_page + 1})" 
+                    ${data.current_page === data.pages ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
+    
+    pagination.innerHTML = html;
+}
+
+// Modal functions
+function openProfessionalModal() {
+    console.log('➕ Abrindo modal para novo profissional');
+    document.getElementById('modalTitle').textContent = 'Novo Profissional';
+    document.getElementById('professionalForm').reset();
+    document.getElementById('professionalId').value = '';
+    document.getElementById('is_active').checked = true;
+    document.getElementById('professionalModal').classList.add('active');
+    
+    setTimeout(() => {
+        document.getElementById('full_name').focus();
+    }, 300);
+}
+
+function closeProfessionalModal() {
+    document.getElementById('professionalModal').classList.remove('active');
+}
+
+function openUserAccountModal() {
+    document.getElementById('userAccountModal').classList.add('active');
+    setTimeout(() => {
+        document.getElementById('username').focus();
+    }, 300);
+}
+
+function closeUserAccountModal() {
+    document.getElementById('userAccountModal').classList.remove('active');
+    document.getElementById('userAccountForm').reset();
+}
+
+// Ver detalhes do profissional
+function viewProfessional(id) {
+    editProfessional(id);
+}
+
+// Editar profissional
+async function editProfessional(id) {
+    console.log(`✏️ Editando profissional ID: ${id}`);
+    
+    try {
+        const response = await fetch(`/professionals/api/${id}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const professional = await response.json();
+        console.log('✅ Dados do profissional carregados:', professional);
+        
+        document.getElementById('modalTitle').textContent = 'Editar Profissional';
+        document.getElementById('professionalId').value = professional.id;
+        document.getElementById('full_name').value = professional.full_name;
+        document.getElementById('cpf').value = professional.cpf;
+        document.getElementById('registro_prof').value = professional.registro_prof || '';
+        document.getElementById('phone').value = professional.phone;
+        document.getElementById('email').value = professional.email || '';
+        document.getElementById('birth_date').value = professional.birth_date || '';
+        document.getElementById('specialty_id').value = professional.specialty.id;
+        document.getElementById('bio').value = professional.bio || '';
+        document.getElementById('is_active').checked = professional.is_active;
+        
+        document.getElementById('professionalModal').classList.add('active');
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar dados do profissional:', error);
+        showToast('Erro ao carregar dados do profissional: ' + error.message, 'error');
+    }
+}
+
+// Salvar profissional
+async function handleProfessionalSubmit(e) {
+    e.preventDefault();
+    
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    submitButton.disabled = true;
+    
+    try {
+        const formData = new FormData(e.target);
+        const professionalId = document.getElementById('professionalId').value;
+        const data = {
+            full_name: formData.get('full_name'),
+            cpf: formData.get('cpf'),
+            registro_prof: formData.get('registro_prof'),
+            phone: formData.get('phone'),
+            email: formData.get('email'),
+            birth_date: formData.get('birth_date'),
+            specialty_id: parseInt(formData.get('specialty_id')),
+            bio: formData.get('bio'),
+            is_active: document.getElementById('is_active').checked
+        };
+        
+        console.log('💾 Salvando profissional:', data);
+        
+        // Validar dados
+        const validation = validateProfessionalData(data);
+        if (!validation.valid) {
+            throw new Error(validation.message);
+        }
+        
+        const url = professionalId ? `/professionals/api/${professionalId}` : '/professionals/api/create';
+        const method = professionalId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        console.log('✅ Profissional salvo com sucesso:', result);
+        showToast(result.message, 'success');
+        closeProfessionalModal();
+        loadProfessionals(currentPage);
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar profissional:', error);
+        showToast(error.message, 'error');
+    } finally {
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// Criar conta de usuário
+async function createUserAccount(professionalId) {
+    console.log(`👤 Criando conta para profissional ID: ${professionalId}`);
+    
+    document.getElementById('userProfessionalId').value = professionalId;
+    document.getElementById('userModalTitle').textContent = 'Criar Conta de Usuário';
+    openUserAccountModal();
+}
+
+// Alterar senha
+async function resetPassword(professionalId) {
+    console.log(`🔑 Alterando senha do profissional ID: ${professionalId}`);
+    
+    document.getElementById('userProfessionalId').value = professionalId;
+    document.getElementById('userModalTitle').textContent = 'Alterar Senha';
+    document.getElementById('username').closest('.form-group').style.display = 'none';
+    openUserAccountModal();
+}
+
+// Submeter formulário de conta
+async function handleUserAccountSubmit(e) {
+    e.preventDefault();
+    
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    submitButton.disabled = true;
+    
+    try {
+        const formData = new FormData(e.target);
+        const professionalId = document.getElementById('userProfessionalId').value;
+        const password = formData.get('password');
+        const passwordConfirm = formData.get('password_confirm');
+        
+        if (password !== passwordConfirm) {
+            throw new Error('As senhas não coincidem');
+        }
+        
+        if (password.length < 8) {
+            throw new Error('A senha deve ter pelo menos 8 caracteres');
+        }
+        
+        const isReset = document.getElementById('userModalTitle').textContent.includes('Alterar');
+        const url = isReset 
+            ? `/professionals/api/${professionalId}/reset-password`
+            : `/professionals/api/${professionalId}/create-account`;
+        
+        const data = { password };
+        if (!isReset) {
+            data.username = formData.get('username');
+        }
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        console.log('✅ Operação realizada com sucesso:', result);
+        showToast(result.message, 'success');
+        closeUserAccountModal();
+        loadProfessionals(currentPage);
+        
+    } catch (error) {
+        console.error('❌ Erro na operação:', error);
+        showToast(error.message, 'error');
+    } finally {
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// Excluir profissional
+async function deleteProfessional(id) {
+    const professional = await getProfessionalById(id);
+    const professionalName = professional ? professional.full_name : 'este profissional';
+    
+    if (!confirm(`Tem certeza que deseja excluir ${professionalName}?\n\nEsta ação também excluirá a conta de usuário (se existir) e não pode ser desfeita.`)) {
+        return;
+    }
+    
+    console.log(`🗑️ Excluindo profissional ID: ${id}`);
+    
+    try {
+        const response = await fetch(`/professionals/api/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        console.log('✅ Profissional excluído com sucesso');
+        showToast(result.message, 'success');
+        loadProfessionals(currentPage);
+        
+    } catch (error) {
+        console.error('❌ Erro ao excluir profissional:', error);
+        showToast('Erro ao excluir profissional: ' + error.message, 'error');
+    }
+}
+
+// Buscar profissional por ID
+async function getProfessionalById(id) {
+    try {
+        const response = await fetch(`/professionals/api/${id}`);
+        return response.ok ? await response.json() : null;
+    } catch {
+        return null;
+    }
+}
+
+// Configurar máscaras
+function setupMasks() {
+    // CPF
+    const cpfInput = document.getElementById('cpf');
+    cpfInput.addEventListener('input', function(e) {
+        maskCPF(e.target);
+        validateCPFVisual(e.target);
+    });
+    
+    // Telefone
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', function(e) {
+        maskPhone(e.target);
+        validatePhoneVisual(e.target);
+    });
+}
+
+// Validar dados do profissional
+function validateProfessionalData(data) {
+    if (!data.full_name || data.full_name.trim().length < 3) {
+        return { valid: false, message: 'Nome deve ter pelo menos 3 caracteres' };
+    }
+    
+    if (!validateCPF(data.cpf)) {
+        return { valid: false, message: 'CPF inválido' };
+    }
+    
+    if (!validatePhone(data.phone)) {
+        return { valid: false, message: 'Telefone inválido' };
+    }
+    
+    if (!data.specialty_id) {
+        return { valid: false, message: 'Especialidade é obrigatória' };
+    }
+    
+    // Validações opcionais
+    if (data.email && !data.email.includes('@')) {
+        return { valid: false, message: 'Email inválido' };
+    }
+    
+    if (data.birth_date) {
+        const birthDate = new Date(data.birth_date);
+        const today = new Date();
+        if (birthDate > today) {
+            return { valid: false, message: 'Data de nascimento não pode ser futura' };
+        }
+        
+        const age = calculateAge(birthDate);
+        if (age > 120 || age < 18) {
+            return { valid: false, message: 'Data de nascimento inválida' };
+        }
+    }
+    
+    return { valid: true };
+}
+
+// Validação visual do CPF
+function validateCPFVisual(input) {
+    const isValid = validateCPF(input.value);
+    if (input.value.length >= 11) {
+        if (isValid) {
+            input.style.borderColor = '#4caf50';
+            clearFieldError(input);
+        } else {
+            input.style.borderColor = '#f44336';
+            showFieldError(input, 'CPF inválido');
+        }
+    } else {
+        input.style.borderColor = '';
+        clearFieldError(input);
+    }
+}
+
+// Validação visual do telefone
+function validatePhoneVisual(input) {
+    const isValid = validatePhone(input.value);
+    if (input.value.length >= 10) {
+        if (isValid) {
+            input.style.borderColor = '#4caf50';
+            clearFieldError(input);
+        } else {
+            input.style.borderColor = '#f44336';
+            showFieldError(input, 'Telefone inválido');
+        }
+    } else {
+        input.style.borderColor = '';
+        clearFieldError(input);
+    }
+}
+
+// Mostrar erro no campo
+function showFieldError(input, message) {
+    clearFieldError(input);
+    const error = document.createElement('div');
+    error.className = 'field-error';
+    error.style.color = '#f44336';
+    error.style.fontSize = '12px';
+    error.style.marginTop = '4px';
+    error.textContent = message;
+    input.parentNode.appendChild(error);
+}
+
+// Limpar erro do campo
+function clearFieldError(input) {
+    const error = input.parentNode.querySelector('.field-error');
+    if (error) error.remove();
+}
+
+// Calcular idade
+function calculateAge(birthDate) {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
+// Fechar modais ao clicar fora
+document.getElementById('professionalModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeProfessionalModal();
+    }
+});
+
+document.getElementById('userAccountModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeUserAccountModal();
+    }
+});
+
+// Atalhos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeProfessionalModal();
+        closeUserAccountModal();
+    }
+    
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        openProfessionalModal();
+    }
+});
+</script>
+
+<style>
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.modal-large .modal-content {
+    max-width: 800px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.form-section h3 {
+    font-size: 18px;
+    color: var(--gray-800);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section h3 i {
+    color: var(--primary);
+}
+
+.professional-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.professional-info small {
+    color: var(--gray-600);
+    font-size: 12px;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.contact-info i {
+    width: 16px;
+    color: var(--gray-500);
+}
+
+.specialty-badge {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.account-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.account-badge.active {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.account-badge.inactive {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+
+.btn-icon.success {
+    color: var(--success);
+}
+
+.btn-icon.warning {
+    color: var(--warning);
+}
+
+.btn-icon.success:hover {
+    background: var(--success);
+    color: white;
+}
+
+.btn-icon.warning:hover {
+    background: var(--warning);
+    color: white;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-danger {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px 0;
+}
+
+.checkbox-container input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .action-buttons {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .contact-info {
+        font-size: 11px;
+    }
+    
+    .modal-large .modal-content {
+        max-width: 95%;
+    }
+}
+</style>
+{% endblock %}

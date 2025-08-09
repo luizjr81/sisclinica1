@@ -15,7 +15,7 @@ class PatientForm(FlaskForm):
         DataRequired(),
         Length(min=11, max=14)  # Permitir CPF com ou sem máscara
     ])
-    birth_date = DateField('Data de Nascimento', validators=[DataRequired()])
+    birth_date = DateField('Data de Nascimento')  # Agora opcional
     phone = StringField('Telefone', validators=[
         DataRequired(),
         Length(min=10, max=15)  # Permitir telefone com ou sem máscara
@@ -112,8 +112,8 @@ def api_create_patient():
         if not data:
             return jsonify({'error': 'Dados não recebidos'}), 400
         
-        # Validações obrigatórias
-        required_fields = ['full_name', 'cpf', 'birth_date', 'phone']
+        # Validações obrigatórias (removido birth_date)
+        required_fields = ['full_name', 'cpf', 'phone']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Campo {field} é obrigatório'}), 400
@@ -130,11 +130,23 @@ def api_create_patient():
         # Formatar telefone
         phone_formatted = format_phone(data['phone'])
         
-        # Validar data de nascimento
-        try:
-            birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({'error': 'Data de nascimento inválida'}), 400
+        # Validar data de nascimento apenas se fornecida
+        birth_date = None
+        if data.get('birth_date'):
+            try:
+                birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
+                # Verificar se a data não é futura
+                if birth_date > datetime.now().date():
+                    return jsonify({'error': 'Data de nascimento não pode ser futura'}), 400
+                
+                # Verificar idade máxima (120 anos)
+                from datetime import date
+                today = date.today()
+                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                if age > 120:
+                    return jsonify({'error': 'Data de nascimento inválida'}), 400
+            except ValueError:
+                return jsonify({'error': 'Data de nascimento inválida'}), 400
         
         # Criar paciente
         patient = Patient(
@@ -178,8 +190,8 @@ def api_update_patient(patient_id):
         if not data:
             return jsonify({'error': 'Dados não recebidos'}), 400
         
-        # Validações obrigatórias
-        required_fields = ['full_name', 'cpf', 'birth_date', 'phone']
+        # Validações obrigatórias (removido birth_date)
+        required_fields = ['full_name', 'cpf', 'phone']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Campo {field} é obrigatório'}), 400
@@ -201,11 +213,23 @@ def api_update_patient(patient_id):
         # Formatar telefone
         phone_formatted = format_phone(data['phone'])
         
-        # Validar data de nascimento
-        try:
-            birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({'error': 'Data de nascimento inválida'}), 400
+        # Validar data de nascimento apenas se fornecida
+        birth_date = None
+        if data.get('birth_date'):
+            try:
+                birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
+                # Verificar se a data não é futura
+                if birth_date > datetime.now().date():
+                    return jsonify({'error': 'Data de nascimento não pode ser futura'}), 400
+                
+                # Verificar idade máxima (120 anos)
+                from datetime import date
+                today = date.today()
+                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                if age > 120:
+                    return jsonify({'error': 'Data de nascimento inválida'}), 400
+            except ValueError:
+                return jsonify({'error': 'Data de nascimento inválida'}), 400
         
         # Atualizar paciente
         patient.full_name = data['full_name'].strip()

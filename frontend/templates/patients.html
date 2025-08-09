@@ -82,9 +82,9 @@
                 <div class="form-group">
                     <label for="birth_date">
                         <i class="fas fa-calendar"></i>
-                        Data de Nascimento *
+                        Data de Nascimento
                     </label>
-                    <input type="date" id="birth_date" name="birth_date" required>
+                    <input type="date" id="birth_date" name="birth_date">
                 </div>
                 
                 <div class="form-group">
@@ -204,15 +204,20 @@ function renderPatients(patients) {
     }
     
     tbody.innerHTML = patients.map(patient => {
-        const birthDate = new Date(patient.birth_date + 'T00:00:00');
-        const age = calculateAge(birthDate);
         const createdDate = new Date(patient.created_at);
+        let birthInfo = '<em>Não informado</em>';
+        
+        if (patient.birth_date) {
+            const birthDate = new Date(patient.birth_date + 'T00:00:00');
+            const age = calculateAge(birthDate);
+            birthInfo = `${birthDate.toLocaleDateString('pt-BR')} <small>(${age} anos)</small>`;
+        }
         
         return `
             <tr>
                 <td><strong>${patient.full_name}</strong></td>
                 <td><code>${patient.cpf}</code></td>
-                <td>${birthDate.toLocaleDateString('pt-BR')} <small>(${age} anos)</small></td>
+                <td>${birthInfo}</td>
                 <td>${patient.phone}</td>
                 <td>${patient.musical_preference || '<em>-</em>'}</td>
                 <td>${createdDate.toLocaleDateString('pt-BR')}</td>
@@ -319,7 +324,7 @@ async function editPatient(id) {
         document.getElementById('patientId').value = patient.id;
         document.getElementById('full_name').value = patient.full_name;
         document.getElementById('cpf').value = patient.cpf;
-        document.getElementById('birth_date').value = patient.birth_date;
+        document.getElementById('birth_date').value = patient.birth_date || '';
         document.getElementById('phone').value = patient.phone;
         document.getElementById('musical_preference').value = patient.musical_preference || '';
         document.getElementById('observations').value = patient.observations || '';
@@ -523,21 +528,18 @@ function validatePatientData(data) {
         return { valid: false, message: 'Telefone inválido' };
     }
     
-    if (!data.birth_date) {
-        return { valid: false, message: 'Data de nascimento é obrigatória' };
-    }
-    
-    // Verificar se a data não é futura
-    const birthDate = new Date(data.birth_date);
-    const today = new Date();
-    if (birthDate > today) {
-        return { valid: false, message: 'Data de nascimento não pode ser futura' };
-    }
-    
-    // Verificar idade mínima (ex: não pode ter mais de 120 anos)
-    const age = calculateAge(birthDate);
-    if (age > 120) {
-        return { valid: false, message: 'Data de nascimento inválida' };
+    // Validar data de nascimento apenas se fornecida
+    if (data.birth_date) {
+        const birthDate = new Date(data.birth_date);
+        const today = new Date();
+        if (birthDate > today) {
+            return { valid: false, message: 'Data de nascimento não pode ser futura' };
+        }
+        
+        const age = calculateAge(birthDate);
+        if (age > 120) {
+            return { valid: false, message: 'Data de nascimento inválida' };
+        }
     }
     
     return { valid: true };
