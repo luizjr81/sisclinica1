@@ -57,15 +57,15 @@
                     </span>
                 </li>
                 <li>
-                    <a href="{{ url_for('professionals.list_professionals') }}" class="{% if 'professionals' in request.endpoint and 'specialties' not in request.endpoint %}active{% endif %}">
+                    <a href="{{ url_for('professionals.list_professionals') }}" class="{% if 'professionals' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-user-md"></i>
                         <span>Profissionais</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{{ url_for('professionals.list_specialties') }}" class="{% if 'specialties' in request.endpoint %}active{% endif %}">
-                        <i class="fas fa-stethoscope"></i>
-                        <span>Especialidades</span>
+                    <a href="{{ url_for('services.list_services') }}" class="{% if 'services' in request.endpoint %}active{% endif %}">
+                        <i class="fas fa-concierge-bell"></i>
+                        <span>Serviços</span>
                     </a>
                 </li>
                 {% endif %}

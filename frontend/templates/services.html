@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Serviços - Clínica Estética{% endblock %}
+{% block page_title %}Gerenciar Serviços{% endblock %}
+
+{% block content %}
+<div class="services-page">
+    <!-- Barra de Ações -->
+    <div class="action-bar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Buscar serviços...">
+        </div>
+        <button class="btn btn-primary" onclick="openServiceModal()">
+            <i class="fas fa-plus"></i>
+            Novo Serviço
+        </button>
+    </div>
+
+    <!-- Tabela de Serviços -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table" id="servicesTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Duração</th>
+                        <th>Preço</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="servicesTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <i class="fas fa-spinner fa-spin"></i> Carregando serviços...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<!-- Modal de Serviço -->
+<div class="modal" id="serviceModal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Serviço</h2>
+            <button class="modal-close" onclick="closeServiceModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form id="serviceForm" class="modal-form">
+            <input type="hidden" id="serviceId">
+
+            <div class="form-row">
+                <div class="form-group flex-2">
+                    <label for="name">Nome do Serviço *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">Categoria</label>
+                    <input type="text" id="category" name="category" placeholder="Ex: Facial, Corporal">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="duration_minutes">Duração (minutos) *</label>
+                    <input type="number" id="duration_minutes" name="duration_minutes" required>
+                </div>
+                <div class="form-group">
+                    <label for="price">Preço (R$) *</label>
+                    <input type="number" step="0.01" id="price" name="price" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Descrição</label>
+                <textarea id="description" name="description" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="preparation_instructions">Instruções de Preparação</label>
+                <textarea id="preparation_instructions" name="preparation_instructions" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="aftercare_instructions">Cuidados Pós-procedimento</label>
+                <textarea id="aftercare_instructions" name="aftercare_instructions" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="is_active" name="is_active" checked>
+                    <span class="checkmark"></span>
+                    Serviço ativo
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeServiceModal()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let searchTimeout;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadServices();
+
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadServices();
+        }, 500);
+    });
+
+    document.getElementById('serviceForm').addEventListener('submit', handleServiceSubmit);
+});
+
+async function loadServices(page = 1) {
+    const search = document.getElementById('searchInput').value;
+    const url = `/services/api/list?page=${page}&search=${encodeURIComponent(search)}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error || 'Erro ao carregar serviços');
+
+        renderServices(data.services);
+        renderPagination(data);
+        currentPage = page;
+
+    } catch (error) {
+        document.getElementById('servicesTableBody').innerHTML =
+            `<tr><td colspan="6" class="text-center text-danger">
+                <i class="fas fa-exclamation-triangle"></i> ${error.message}
+            </td></tr>`;
+    }
+}
+
+function renderServices(services) {
+    const tbody = document.getElementById('servicesTableBody');
+    if (services.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center">Nenhum serviço encontrado</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = services.map(service => {
+        const statusClass = service.is_active ? 'success' : 'danger';
+        const statusText = service.is_active ? 'Ativo' : 'Inativo';
+
+        return `
+            <tr>
+                <td><strong>${service.name}</strong><br><small>${service.category || ''}</small></td>
+                <td>${service.description || '-'}</td>
+                <td>${service.duration_minutes} min</td>
+                <td>R$ ${service.price.toFixed(2)}</td>
+                <td><span class="status-badge status-${statusClass}">${statusText}</span></td>
+                <td>
+                    <button class="btn-icon" onclick="editService(${service.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon danger" onclick="deleteService(${service.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPagination(data) {
+    const pagination = document.getElementById('pagination');
+    if (data.pages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    html += `<button onclick="loadServices(${data.current_page - 1})" ${data.current_page === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
+
+    for (let i = 1; i <= data.pages; i++) {
+        html += `<button onclick="loadServices(${i})" class="${i === data.current_page ? 'active' : ''}">${i}</button>`;
+    }
+
+    html += `<button onclick="loadServices(${data.current_page + 1})" ${data.current_page === data.pages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+    pagination.innerHTML = html;
+}
+
+function openServiceModal() {
+    document.getElementById('modalTitle').textContent = 'Novo Serviço';
+    document.getElementById('serviceForm').reset();
+    document.getElementById('serviceId').value = '';
+    document.getElementById('is_active').checked = true;
+    document.getElementById('serviceModal').classList.add('active');
+}
+
+function closeServiceModal() {
+    document.getElementById('serviceModal').classList.remove('active');
+}
+
+async function editService(id) {
+    const response = await fetch(`/services/api/${id}`);
+    const service = await response.json();
+
+    document.getElementById('modalTitle').textContent = 'Editar Serviço';
+    document.getElementById('serviceId').value = service.id;
+    document.getElementById('name').value = service.name;
+    document.getElementById('description').value = service.description;
+    document.getElementById('category').value = service.category;
+    document.getElementById('duration_minutes').value = service.duration_minutes;
+    document.getElementById('price').value = service.price;
+    document.getElementById('preparation_instructions').value = service.preparation_instructions;
+    document.getElementById('aftercare_instructions').value = service.aftercare_instructions;
+    document.getElementById('is_active').checked = service.is_active;
+
+    document.getElementById('serviceModal').classList.add('active');
+}
+
+async function handleServiceSubmit(e) {
+    e.preventDefault();
+    const serviceId = document.getElementById('serviceId').value;
+    const url = serviceId ? `/services/api/${serviceId}` : '/services/api/create';
+    const method = serviceId ? 'PUT' : 'POST';
+
+    const data = {
+        name: document.getElementById('name').value,
+        description: document.getElementById('description').value,
+        category: document.getElementById('category').value,
+        duration_minutes: parseInt(document.getElementById('duration_minutes').value),
+        price: parseFloat(document.getElementById('price').value),
+        preparation_instructions: document.getElementById('preparation_instructions').value,
+        aftercare_instructions: document.getElementById('aftercare_instructions').value,
+        is_active: document.getElementById('is_active').checked
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Erro ao salvar serviço');
+
+        showToast(result.message, 'success');
+        closeServiceModal();
+        loadServices(currentPage);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function deleteService(id) {
+    if (!confirm('Tem certeza que deseja excluir este serviço?')) return;
+
+    try {
+        const response = await fetch(`/services/api/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error || 'Erro ao excluir serviço');
+
+        showToast(result.message, 'success');
+        loadServices(currentPage);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

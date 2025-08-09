@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
-from wtforms import StringField, DateField, TextAreaField, SubmitField, SelectField, BooleanField
+from wtforms import StringField, DateField, TextAreaField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email
-from models import db, Professional, Specialty, User
+from models import db, Professional, User
 from datetime import datetime
 import re
 
@@ -12,19 +12,12 @@ professionals_bp = Blueprint('professionals', __name__)
 class ProfessionalForm(FlaskForm):
     full_name = StringField('Nome Completo', validators=[DataRequired(), Length(min=3, max=150)])
     cpf = StringField('CPF', validators=[DataRequired(), Length(min=11, max=14)])
-    registro_prof = StringField('Registro Prof.', validators=[Length(max=20)])  # Opcional agora
+    registro_prof = StringField('Registro Prof.', validators=[Length(max=20)])
     phone = StringField('Telefone', validators=[DataRequired(), Length(min=10, max=15)])
-    email = StringField('Email', validators=[Email()])  # Opcional agora
+    email = StringField('Email', validators=[Email()])
     birth_date = DateField('Data de Nascimento')
-    specialty_id = SelectField('Especialidade', coerce=int, validators=[DataRequired()])
     bio = TextAreaField('Biografia')
     is_active = BooleanField('Ativo')
-    submit = SubmitField('Salvar')
-
-class SpecialtyForm(FlaskForm):
-    name = StringField('Nome da Especialidade', validators=[DataRequired(), Length(min=3, max=100)])
-    description = TextAreaField('Descrição')
-    is_active = BooleanField('Ativa', default=True)
     submit = SubmitField('Salvar')
 
 def validate_cpf(cpf):
@@ -63,154 +56,7 @@ def format_phone(phone):
         return f'({phone[:2]}) {phone[2:6]}-{phone[6:]}'
     return phone
 
-# ===== ROTAS DE ESPECIALIDADES =====
-
-@professionals_bp.route('/specialties')
-@login_required
-def list_specialties():
-    if not current_user.has_permission('all'):
-        flash('Acesso negado. Apenas administradores podem gerenciar especialidades.', 'error')
-        return redirect(url_for('dashboard'))
-    
-    return render_template('specialties.html')
-
-@professionals_bp.route('/api/specialties/list')
-@login_required
-def api_list_specialties():
-    try:
-        search = request.args.get('search', '').strip()
-        page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 10, type=int), 100)
-        
-        query = Specialty.query
-        
-        if search:
-            search_filter = f'%{search}%'
-            query = query.filter(Specialty.name.ilike(search_filter))
-        
-        pagination = query.order_by(Specialty.name).paginate(
-            page=page, per_page=per_page, error_out=False
-        )
-        
-        return jsonify({
-            'specialties': [s.to_dict() for s in pagination.items],
-            'total': pagination.total,
-            'pages': pagination.pages,
-            'current_page': page,
-            'per_page': per_page
-        })
-    except Exception as e:
-        return jsonify({'error': f'Erro ao carregar especialidades: {str(e)}'}), 500
-
-@professionals_bp.route('/api/specialties/create', methods=['POST'])
-@login_required
-def api_create_specialty():
-    if not current_user.has_permission('all'):
-        return jsonify({'error': 'Acesso negado'}), 403
-    
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'Dados não recebidos'}), 400
-        
-        # Validações
-        if not data.get('name') or len(data['name'].strip()) < 3:
-            return jsonify({'error': 'Nome da especialidade deve ter pelo menos 3 caracteres'}), 400
-        
-        # Verificar se já existe
-        if Specialty.query.filter_by(name=data['name'].strip()).first():
-            return jsonify({'error': 'Especialidade já cadastrada'}), 400
-        
-        specialty = Specialty(
-            name=data['name'].strip(),
-            description=data.get('description', '').strip(),
-            is_active=data.get('is_active', True)
-        )
-        
-        db.session.add(specialty)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Especialidade cadastrada com sucesso',
-            'specialty': specialty.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Erro interno: {str(e)}'}), 500
-
-@professionals_bp.route('/api/specialties/<int:specialty_id>', methods=['GET'])
-@login_required
-def api_get_specialty(specialty_id):
-    try:
-        specialty = Specialty.query.get_or_404(specialty_id)
-        return jsonify(specialty.to_dict())
-    except Exception as e:
-        return jsonify({'error': f'Erro ao carregar especialidade: {str(e)}'}), 500
-
-@professionals_bp.route('/api/specialties/<int:specialty_id>', methods=['PUT'])
-@login_required
-def api_update_specialty(specialty_id):
-    if not current_user.has_permission('all'):
-        return jsonify({'error': 'Acesso negado'}), 403
-    
-    try:
-        specialty = Specialty.query.get_or_404(specialty_id)
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'Dados não recebidos'}), 400
-        
-        # Validações
-        if not data.get('name') or len(data['name'].strip()) < 3:
-            return jsonify({'error': 'Nome da especialidade deve ter pelo menos 3 caracteres'}), 400
-        
-        # Verificar se já existe (exceto para a própria especialidade)
-        existing = Specialty.query.filter(
-            Specialty.name == data['name'].strip(),
-            Specialty.id != specialty_id
-        ).first()
-        
-        if existing:
-            return jsonify({'error': 'Especialidade já cadastrada'}), 400
-        
-        specialty.name = data['name'].strip()
-        specialty.description = data.get('description', '').strip()
-        specialty.is_active = data.get('is_active', True)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Especialidade atualizada com sucesso',
-            'specialty': specialty.to_dict()
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Erro ao atualizar especialidade: {str(e)}'}), 500
-
-@professionals_bp.route('/api/specialties/<int:specialty_id>', methods=['DELETE'])
-@login_required
-def api_delete_specialty(specialty_id):
-    if not current_user.has_permission('all'):
-        return jsonify({'error': 'Acesso negado'}), 403
-    
-    try:
-        specialty = Specialty.query.get_or_404(specialty_id)
-        
-        # Verificar se há profissionais vinculados
-        if specialty.professionals:
-            return jsonify({'error': 'Não é possível excluir especialidade com profissionais vinculados'}), 400
-        
-        db.session.delete(specialty)
-        db.session.commit()
-        
-        return jsonify({'message': 'Especialidade excluída com sucesso'})
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Erro ao excluir especialidade: {str(e)}'}), 500
+# ===== ROTAS DE PROFISSIONAIS =====
 
 # ===== ROTAS DE PROFISSIONAIS =====
 
@@ -231,7 +77,7 @@ def api_list_professionals():
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         
-        query = Professional.query.join(Specialty)
+        query = Professional.query
         
         if search:
             search_filter = f'%{search}%'
@@ -240,8 +86,7 @@ def api_list_professionals():
                     Professional.full_name.ilike(search_filter),
                     Professional.cpf.like(search_filter),
                     Professional.registro_prof.ilike(search_filter),
-                    Professional.email.ilike(search_filter),
-                    Specialty.name.ilike(search_filter)
+                    Professional.email.ilike(search_filter)
                 )
             )
         
@@ -271,8 +116,8 @@ def api_create_professional():
         if not data:
             return jsonify({'error': 'Dados não recebidos'}), 400
         
-        # Validações obrigatórias (removido registro_prof e email)
-        required_fields = ['full_name', 'cpf', 'phone', 'specialty_id']
+        # Validações obrigatórias
+        required_fields = ['full_name', 'cpf', 'phone']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Campo {field} é obrigatório'}), 400
@@ -294,11 +139,6 @@ def api_create_professional():
         if data.get('registro_prof') and Professional.query.filter_by(registro_prof=data['registro_prof']).first():
             return jsonify({'error': 'Registro profissional já cadastrado'}), 400
         
-        # Verificar se a especialidade existe
-        specialty = Specialty.query.get(data['specialty_id'])
-        if not specialty:
-            return jsonify({'error': 'Especialidade não encontrada'}), 400
-        
         # Formatar telefone
         phone_formatted = format_phone(data['phone'])
         
@@ -319,7 +159,6 @@ def api_create_professional():
             email=data.get('email', '').strip().lower() if data.get('email') else None,
             birth_date=birth_date,
             bio=data.get('bio', '').strip(),
-            specialty_id=data['specialty_id'],
             is_active=data.get('is_active', True),
             created_by=current_user.id
         )
@@ -358,8 +197,8 @@ def api_update_professional(professional_id):
         if not data:
             return jsonify({'error': 'Dados não recebidos'}), 400
         
-        # Validações obrigatórias (removido registro_prof e email)
-        required_fields = ['full_name', 'cpf', 'phone', 'specialty_id']
+        # Validações obrigatórias
+        required_fields = ['full_name', 'cpf', 'phone']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Campo {field} é obrigatório'}), 400
@@ -396,11 +235,6 @@ def api_update_professional(professional_id):
             if registro_exists:
                 return jsonify({'error': 'Registro profissional já cadastrado para outro profissional'}), 400
         
-        # Verificar se a especialidade existe
-        specialty = Specialty.query.get(data['specialty_id'])
-        if not specialty:
-            return jsonify({'error': 'Especialidade não encontrada'}), 400
-        
         # Formatar telefone
         phone_formatted = format_phone(data['phone'])
         
@@ -420,7 +254,6 @@ def api_update_professional(professional_id):
         professional.email = data.get('email', '').strip().lower() if data.get('email') else None
         professional.birth_date = birth_date
         professional.bio = data.get('bio', '').strip()
-        professional.specialty_id = data['specialty_id']
         professional.is_active = data.get('is_active', True)
         professional.updated_at = datetime.utcnow()
         
@@ -535,16 +368,3 @@ def api_reset_password(professional_id):
         return jsonify({'error': f'Erro ao alterar senha: {str(e)}'}), 500
 
 # ===== ROTAS AUXILIARES =====
-
-@professionals_bp.route('/api/specialties/options')
-@login_required
-def api_specialties_options():
-    """Retorna especialidades ativas para uso em selects"""
-    try:
-        specialties = Specialty.query.filter_by(is_active=True).order_by(Specialty.name).all()
-        return jsonify([{
-            'id': s.id,
-            'name': s.name
-        } for s in specialties])
-    except Exception as e:
-        return jsonify({'error': f'Erro ao carregar especialidades: {str(e)}'}), 500
