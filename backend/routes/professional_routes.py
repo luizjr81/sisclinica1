@@ -58,8 +58,6 @@ def format_phone(phone):
 
 # ===== ROTAS DE PROFISSIONAIS =====
 
-# ===== ROTAS DE PROFISSIONAIS =====
-
 @professionals_bp.route('/')
 @login_required
 def list_professionals():
@@ -147,6 +145,14 @@ def api_create_professional():
         if data.get('birth_date'):
             try:
                 birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
+                # Verificar se não é futura e idade razoável
+                today = datetime.now().date()
+                if birth_date > today:
+                    return jsonify({'error': 'Data de nascimento não pode ser futura'}), 400
+                
+                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                if age > 120 or age < 18:
+                    return jsonify({'error': 'Data de nascimento inválida'}), 400
             except ValueError:
                 return jsonify({'error': 'Data de nascimento inválida'}), 400
         
@@ -243,6 +249,13 @@ def api_update_professional(professional_id):
         if data.get('birth_date'):
             try:
                 birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
+                today = datetime.now().date()
+                if birth_date > today:
+                    return jsonify({'error': 'Data de nascimento não pode ser futura'}), 400
+                
+                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                if age > 120 or age < 18:
+                    return jsonify({'error': 'Data de nascimento inválida'}), 400
             except ValueError:
                 return jsonify({'error': 'Data de nascimento inválida'}), 400
         
@@ -316,6 +329,10 @@ def api_create_user_account(professional_id):
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Username já existe'}), 400
         
+        # Validar senha
+        if len(password) < 8:
+            return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
+        
         # Criar conta de usuário (usar email do profissional se disponível)
         user_email = professional.email if professional.email else f"{username}@clinica.com"
         
@@ -358,6 +375,9 @@ def api_reset_password(professional_id):
         if not new_password:
             return jsonify({'error': 'Nova senha é obrigatória'}), 400
         
+        if len(new_password) < 8:
+            return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
+        
         professional.user_account.set_password(new_password)
         db.session.commit()
         
@@ -366,5 +386,3 @@ def api_reset_password(professional_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erro ao alterar senha: {str(e)}'}), 500
-
-# ===== ROTAS AUXILIARES =====

@@ -86,9 +86,9 @@ class Professional(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(150), nullable=False)
     cpf = db.Column(db.String(14), unique=True, nullable=False)
-    registro_prof = db.Column(db.String(20), nullable=True)
+    registro_prof = db.Column(db.String(20), nullable=True)  # Corrigido: agora é opcional
     phone = db.Column(db.String(15), nullable=False)
-    email = db.Column(db.String(120), nullable=True)
+    email = db.Column(db.String(120), nullable=True)  # Corrigido: agora é opcional
     birth_date = db.Column(db.Date)
     photo = db.Column(db.String(255))
     bio = db.Column(db.Text)
@@ -135,7 +135,7 @@ class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(150), nullable=False)
     cpf = db.Column(db.String(14), unique=True, nullable=False)
-    birth_date = db.Column(db.Date, nullable=True)  # Data de nascimento agora opcional
+    birth_date = db.Column(db.Date, nullable=True)  # Corrigido: agora é opcional
     phone = db.Column(db.String(15), nullable=False)
     musical_preference = db.Column(db.String(100))
     observations = db.Column(db.Text)

@@ -6,6 +6,50 @@ from flask_jwt_extended import JWTManager
 from config import Config
 from models import db, User, Servico
 import os
+import logging
+from logging.handlers import RotatingFileHandler
+
+def validate_config(app):
+    """Valida as configurações críticas da aplicação"""
+    errors = []
+    
+    if not app.config['SECRET_KEY']:
+        errors.append("SECRET_KEY não foi configurada")
+    elif app.config['SECRET_KEY'] == 'sua-chave-secreta-aqui-mude-em-producao':
+        errors.append("SECRET_KEY está usando o valor padrão - altere no arquivo .env")
+    
+    if not app.config['SQLALCHEMY_DATABASE_URI']:
+        errors.append("DATABASE_URL não foi configurada")
+    
+    if not app.config['JWT_SECRET_KEY']:
+        errors.append("JWT_SECRET_KEY não foi configurada")
+    elif app.config['JWT_SECRET_KEY'] == 'sua-chave-jwt-aqui-mude-em-producao':
+        errors.append("JWT_SECRET_KEY está usando o valor padrão - altere no arquivo .env")
+    
+    if errors:
+        error_msg = "Erros de configuração encontrados:\n"
+        for error in errors:
+            error_msg += f"  • {error}\n"
+        error_msg += "\nPor favor, configure o arquivo .env corretamente e reinicie a aplicação."
+        raise ValueError(error_msg)
+
+def setup_logging(app):
+    """Configura o sistema de logging"""
+    if not app.debug and not app.testing:
+        # Criar diretório de logs se não existir
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        
+        # Configurar handler de arquivo com rotação
+        file_handler = RotatingFileHandler('logs/clinica.log', maxBytes=10240, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('🏥 Sistema Clínica Estética iniciado')
 
 def create_app():
     app = Flask(__name__, 
@@ -14,9 +58,16 @@ def create_app():
     
     app.config.from_object(Config)
     
-    if not app.config['SECRET_KEY'] or app.config['SECRET_KEY'] == 'sua-chave-secreta-aqui-mude-em-producao':
-        raise ValueError("A SECRET_KEY não foi configurada ou está usando o valor padrão. Por favor, crie um arquivo .env, defina uma chave segura e reinicie a aplicação.")
-
+    # Validar configurações críticas
+    try:
+        validate_config(app)
+    except ValueError as e:
+        print(f"❌ Erro de configuração: {e}")
+        raise
+    
+    # Configurar logging
+    setup_logging(app)
+    
     # Inicializar extensões
     db.init_app(app)
     
@@ -75,33 +126,38 @@ def create_app():
         
         return dict(has_permission=has_permission)
     
-    # Tratamento de erros
+    # Tratamento de erros melhorado
     @app.errorhandler(400)
     def bad_request(error):
+        app.logger.warning(f'Bad request: {error}')
         if 'application/json' in str(error):
             return {'error': 'Requisição inválida'}, 400
         return render_template('errors/400.html'), 400
     
     @app.errorhandler(401)
     def unauthorized(error):
+        app.logger.warning(f'Unauthorized access: {error}')
         if 'application/json' in str(error):
             return {'error': 'Não autorizado'}, 401
         return redirect(url_for('auth.login'))
     
     @app.errorhandler(403)
     def forbidden(error):
+        app.logger.warning(f'Forbidden access: {error}')
         if 'application/json' in str(error):
             return {'error': 'Acesso negado'}, 403
         return render_template('errors/403.html'), 403
     
     @app.errorhandler(404)
     def not_found(error):
+        app.logger.info(f'Page not found: {error}')
         if 'application/json' in str(error):
             return {'error': 'Recurso não encontrado'}, 404
         return render_template('errors/404.html'), 404
     
     @app.errorhandler(500)
     def internal_error(error):
+        app.logger.error(f'Internal server error: {error}')
         db.session.rollback()
         if 'application/json' in str(error):
             return {'error': 'Erro interno do servidor'}, 500
@@ -114,26 +170,34 @@ def create_app():
             
             # Criar usuário admin padrão se não existir
             if not User.query.filter_by(username='admin').first():
+                # Usar senha do ambiente ou padrão
+                admin_password = os.environ.get('ADMIN_DEFAULT_PASSWORD', 'admin123')
+                
                 admin = User(
                     username='admin',
                     email='admin@clinica.com',
                     full_name='Administrador',
                     role='admin'
                 )
-                admin.set_password('admin123')  # Mudar em produção!
+                admin.set_password(admin_password)
                 db.session.add(admin)
                 
+                app.logger.info("✅ Usuário admin criado com sucesso!")
                 print("✅ Usuário admin criado com sucesso!")
                 print("   Username: admin")
-                print("   Password: admin123")
-                print("   ⚠️  ALTERE ESTA SENHA EM PRODUÇÃO!")
+                print(f"   Password: {admin_password}")
+                if admin_password == 'admin123':
+                    print("   ⚠️  ALTERE ESTA SENHA EM PRODUÇÃO!")
             
             db.session.commit()
+            app.logger.info("✅ Banco de dados inicializado com sucesso!")
             print("✅ Banco de dados inicializado com sucesso!")
             
         except Exception as e:
+            app.logger.error(f"❌ Erro ao inicializar banco de dados: {e}")
             print(f"❌ Erro ao inicializar banco de dados: {e}")
             print("   Verifique se o PostgreSQL está rodando e as configurações no .env estão corretas")
+            raise
     
     return app
 
@@ -148,6 +212,7 @@ if __name__ == '__main__':
         print("📋 Módulos disponíveis:")
         print("   • Pacientes")
         print("   • Profissionais")
+        print("   • Serviços")
         print("=" * 50)
         
         app.run(debug=True, host='0.0.0.0', port=5000)
@@ -158,3 +223,4 @@ if __name__ == '__main__':
         print("   1. Se o arquivo .env existe e está configurado")
         print("   2. Se o PostgreSQL está rodando")
         print("   3. Se as dependências estão instaladas: pip install -r requirements.txt")
+        exit(1)
