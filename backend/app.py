@@ -4,7 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from config import Config
-from models import db, User, Specialty
+from models import db, User, Servico
 import os
 
 def create_app():
@@ -40,10 +40,12 @@ def create_app():
     from routes.auth_routes import auth_bp
     from routes.patient_routes import patient_bp
     from routes.professional_routes import professionals_bp
+    from routes.service_routes import services_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(patient_bp, url_prefix='/patients')
     app.register_blueprint(professionals_bp, url_prefix='/professionals')
+    app.register_blueprint(services_bp, url_prefix='/services')
     
     # Rotas principais
     @app.route('/')
@@ -110,35 +112,6 @@ def create_app():
         try:
             db.create_all()
             
-            # Criar especialidades padrão se não existirem
-            default_specialties = [
-                {
-                    'name': 'Dermatologia',
-                    'description': 'Especialidade médica que trata doenças relacionadas à pele, cabelos e unhas'
-                },
-                {
-                    'name': 'Estética Facial',
-                    'description': 'Tratamentos estéticos para rosto, incluindo limpezas, peelings e rejuvenescimento'
-                },
-                {
-                    'name': 'Estética Corporal',
-                    'description': 'Procedimentos estéticos para o corpo, como massagens, drenagem e modelagem'
-                },
-                {
-                    'name': 'Cosmetologia',
-                    'description': 'Ciência que estuda cosméticos e seus efeitos na pele'
-                },
-                {
-                    'name': 'Micropigmentação',
-                    'description': 'Técnica de pigmentação semipermanente para sobrancelhas, lábios e olhos'
-                }
-            ]
-            
-            for spec_data in default_specialties:
-                if not Specialty.query.filter_by(name=spec_data['name']).first():
-                    specialty = Specialty(**spec_data)
-                    db.session.add(specialty)
-            
             # Criar usuário admin padrão se não existir
             if not User.query.filter_by(username='admin').first():
                 admin = User(
@@ -157,7 +130,6 @@ def create_app():
             
             db.session.commit()
             print("✅ Banco de dados inicializado com sucesso!")
-            print("✅ Especialidades padrão criadas!")
             
         except Exception as e:
             print(f"❌ Erro ao inicializar banco de dados: {e}")
@@ -176,7 +148,6 @@ if __name__ == '__main__':
         print("📋 Módulos disponíveis:")
         print("   • Pacientes")
         print("   • Profissionais")
-        print("   • Especialidades")
         print("=" * 50)
         
         app.run(debug=True, host='0.0.0.0', port=5000)

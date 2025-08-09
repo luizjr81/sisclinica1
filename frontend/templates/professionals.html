@@ -12,10 +12,6 @@
             <input type="text" id="searchInput" placeholder="Buscar por nome, CPF, registro, email ou especialidade...">
         </div>
         <div class="action-buttons">
-            <a href="{{ url_for('professionals.list_specialties') }}" class="btn btn-secondary">
-                <i class="fas fa-stethoscope"></i>
-                Especialidades
-            </a>
             <button class="btn btn-primary" onclick="openProfessionalModal()">
                 <i class="fas fa-plus"></i>
                 Novo Profissional
@@ -32,7 +28,6 @@
                         <th>Profissional</th>
                         <th>CPF</th>
                         <th>Registro Prof.</th>
-                        <th>Especialidade</th>
                         <th>Contato</th>
                         <th>Status</th>
                         <th>Conta</th>
@@ -113,16 +108,6 @@
                 <h3><i class="fas fa-stethoscope"></i> Dados Profissionais</h3>
                 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="specialty_id">
-                            <i class="fas fa-user-md"></i>
-                            Especialidade *
-                        </label>
-                        <select id="specialty_id" name="specialty_id" required>
-                            <option value="">Selecione uma especialidade</option>
-                        </select>
-                    </div>
-                    
                     <div class="form-group">
                         <label class="checkbox-container">
                             <input type="checkbox" id="is_active" name="is_active" checked>
@@ -238,12 +223,10 @@
 <script>
 let currentPage = 1;
 let searchTimeout;
-let specialties = [];
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🏥 Inicializando página de profissionais');
-    loadSpecialties();
     loadProfessionals();
     
     // Configurar busca
@@ -262,33 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configurar máscaras
     setupMasks();
 });
-
-// Carregar especialidades para o select
-async function loadSpecialties() {
-    try {
-        const response = await fetch('/professionals/api/specialties/options');
-        
-        if (!response.ok) {
-            throw new Error('Erro ao carregar especialidades');
-        }
-        
-        specialties = await response.json();
-        
-        const select = document.getElementById('specialty_id');
-        select.innerHTML = '<option value="">Selecione uma especialidade</option>';
-        
-        specialties.forEach(specialty => {
-            const option = document.createElement('option');
-            option.value = specialty.id;
-            option.textContent = specialty.name;
-            select.appendChild(option);
-        });
-        
-    } catch (error) {
-        console.error('❌ Erro ao carregar especialidades:', error);
-        showToast('Erro ao carregar especialidades', 'error');
-    }
-}
 
 // Carregar profissionais
 async function loadProfessionals(page = 1) {
@@ -358,12 +314,6 @@ function renderProfessionals(professionals) {
                 </td>
                 <td><code>${professional.cpf}</code></td>
                 <td><strong>${professional.registro_prof || '<em>-</em>'}</strong></td>
-                <td>
-                    <span class="specialty-badge">
-                        <i class="fas fa-stethoscope"></i>
-                        ${professional.specialty.name}
-                    </span>
-                </td>
                 <td>
                     <div class="contact-info">
                         <div><i class="fas fa-phone"></i> ${professional.phone}</div>
@@ -505,7 +455,6 @@ async function editProfessional(id) {
         document.getElementById('phone').value = professional.phone;
         document.getElementById('email').value = professional.email || '';
         document.getElementById('birth_date').value = professional.birth_date || '';
-        document.getElementById('specialty_id').value = professional.specialty.id;
         document.getElementById('bio').value = professional.bio || '';
         document.getElementById('is_active').checked = professional.is_active;
         
@@ -537,7 +486,6 @@ async function handleProfessionalSubmit(e) {
             phone: formData.get('phone'),
             email: formData.get('email'),
             birth_date: formData.get('birth_date'),
-            specialty_id: parseInt(formData.get('specialty_id')),
             bio: formData.get('bio'),
             is_active: document.getElementById('is_active').checked
         };
@@ -730,10 +678,6 @@ function validateProfessionalData(data) {
     
     if (!validatePhone(data.phone)) {
         return { valid: false, message: 'Telefone inválido' };
-    }
-    
-    if (!data.specialty_id) {
-        return { valid: false, message: 'Especialidade é obrigatória' };
     }
     
     // Validações opcionais
