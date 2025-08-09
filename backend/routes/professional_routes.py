@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, DateField, TextAreaField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email
-from models import db, Professional, User
+from models import db, Professional, User, Servico
 from datetime import datetime
 import re
 
@@ -169,6 +169,12 @@ def api_create_professional():
             created_by=current_user.id
         )
         
+        # Associar serviços
+        service_ids = data.get('service_ids', [])
+        if service_ids:
+            services = Servico.query.filter(Servico.id.in_(service_ids)).all()
+            professional.services = services
+
         db.session.add(professional)
         db.session.commit()
         
@@ -270,6 +276,11 @@ def api_update_professional(professional_id):
         professional.is_active = data.get('is_active', True)
         professional.updated_at = datetime.utcnow()
         
+        # Atualizar serviços
+        service_ids = data.get('service_ids', [])
+        services = Servico.query.filter(Servico.id.in_(service_ids)).all()
+        professional.services = services
+
         db.session.commit()
         
         return jsonify({

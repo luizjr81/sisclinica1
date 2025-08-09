@@ -92,11 +92,13 @@ def create_app():
     from routes.patient_routes import patient_bp
     from routes.professional_routes import professionals_bp
     from routes.service_routes import services_bp
+    from routes.atendimento_routes import atendimento_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(patient_bp, url_prefix='/patients')
     app.register_blueprint(professionals_bp, url_prefix='/professionals')
     app.register_blueprint(services_bp, url_prefix='/services')
+    app.register_blueprint(atendimento_bp, url_prefix='/atendimentos')
     
     # Rotas principais
     @app.route('/')

@@ -48,6 +48,12 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
+# Tabela de associação para o relacionamento muitos-para-muitos entre Profissionais e Serviços
+professional_services = db.Table('professional_services',
+    db.Column('professional_id', db.Integer, db.ForeignKey('professionals.id'), primary_key=True),
+    db.Column('service_id', db.Integer, db.ForeignKey('servicos.id'), primary_key=True)
+)
+
 class Servico(db.Model):
     __tablename__ = 'servicos'
 
@@ -61,6 +67,13 @@ class Servico(db.Model):
     aftercare_instructions = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relacionamento com Profissionais
+    professionals = db.relationship(
+        'Professional',
+        secondary=professional_services,
+        back_populates='services'
+    )
 
     def to_dict(self):
         return {
@@ -98,6 +111,13 @@ class Professional(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     
     creator = db.relationship('User', backref='professionals_created')
+
+    # Relacionamento com Serviços
+    services = db.relationship(
+        'Servico',
+        secondary=professional_services,
+        back_populates='professionals'
+    )
     
     @property
     def user_account(self):
@@ -126,7 +146,8 @@ class Professional(db.Model):
             'is_active': self.is_active,
             'has_user_account': self.has_user_account,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None,
+            'services': [service.to_dict() for service in self.services]
         }
 
 class Patient(db.Model):
@@ -160,4 +181,41 @@ class Patient(db.Model):
             'observations': self.observations,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+
+# Tabela de associação para Atendimentos e Serviços
+atendimento_servicos = db.Table('atendimento_servicos',
+    db.Column('atendimento_id', db.Integer, db.ForeignKey('atendimentos.id'), primary_key=True),
+    db.Column('servico_id', db.Integer, db.ForeignKey('servicos.id'), primary_key=True)
+)
+
+class Atendimento(db.Model):
+    __tablename__ = 'atendimentos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
+    professional_id = db.Column(db.Integer, db.ForeignKey('professionals.id'), nullable=False)
+
+    data_atendimento = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    anotacoes = db.Column(db.Text)
+    valor_cobrado = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relacionamentos
+    patient = db.relationship('Patient', backref=db.backref('atendimentos', lazy=True))
+    professional = db.relationship('Professional', backref=db.backref('atendimentos', lazy=True))
+    servicos = db.relationship('Servico', secondary=atendimento_servicos, lazy='subquery',
+        backref=db.backref('atendimentos', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'patient_id': self.patient_id,
+            'patient_name': self.patient.full_name if self.patient else None,
+            'professional_id': self.professional_id,
+            'professional_name': self.professional.full_name if self.professional else None,
+            'data_atendimento': self.data_atendimento.strftime('%Y-%m-%d %H:%M:%S'),
+            'anotacoes': self.anotacoes,
+            'valor_cobrado': self.valor_cobrado,
+            'servicos': [servico.to_dict() for servico in self.servicos]
         }
